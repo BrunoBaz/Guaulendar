@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="history-page" aria-labelledby="history-title">
+    <header class="contacts-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / ARCHIVO</p>
+            <h1 id="history-title">Histórico <span>de servicios</span></h1>
+            <p class="contacts-intro">Servicios realizados, estados y desglose de cada importe.</p>
+        </div>
+        <div class="history-summary">
+
+            <div class="contacts-total" aria-label="Servicios archivados">
+                <strong>{{ service_count }}</strong>
+                <span>servicios</span>
+            </div>
+            <div class="history-total-collected">
+                <span>Total cobrado</span>
+                <strong>{{ total_collected|floatformat:2 }} €</strong>
+            </div>
+        </div>
+    </header>
+
+    <form method="get" class="history-date-filter" aria-label="Filtrar histórico por fechas">
+        <div class="history-date-filter__field">
+            <label for="history-date-from">Desde</label>
+            <input id="history-date-from" type="date" name="date_from" value="{{ date_from }}">
+        </div>
+        <div class="history-date-filter__field">
+            <label for="history-date-to">Hasta</label>
+            <input id="history-date-to" type="date" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="history-date-filter__actions">
+            <button class="contact-dialog__button contact-dialog__button--primary" type="submit">Filtrar fechas</button>
+            <a class="directory-search__clear" href="{% url 'service_history' %}">Limpiar</a>
+        </div>
+        {% if date_filter_error %}
+            <p class="history-date-filter__error" role="alert">{{ date_filter_error }}</p>
+        {% endif %}
+    </form>
+
+    <div class="history-grid">
+        {% for service in service_history %}
+            <article class="history-card">
+                <header class="history-card__header">
+                    <span class="history-mark" aria-hidden="true">{{ service.dog_snapshot.name|default:service.dog.name|first|upper }}</span>
+                    <div class="history-card__identity">
+                        <p class="contact-kicker">{{ service.date|date:"d/m/Y · H:i" }}</p>
+                        <h2><a href="{% url 'service_history_detail' service.pk %}">{{ service.dog_snapshot.name|default:service.dog.name }}</a></h2>
+                        <p>{{ service.get_service_type_display }}</p>
+                    </div>
+                    {% if service.status == "COMPLETED" %}
+                        <span class="history-status history-status--completed">Completado</span>
+                    {% else %}
+                        <span class="history-status history-status--cancelled">Cancelado</span>
+                    {% endif %}
+                </header>
+
+                <dl class="history-breakdown">
+                    <div>
+                        <dt>Precio con IVA</dt>
+                        <dd>{{ service.price|floatformat:2 }} €</dd>
+                    </div>
+                    <div>
+                        <dt>Base imponible</dt>
+                        <dd>{{ service.taxable_base|floatformat:2 }} €</dd>
+                    </div>
+                    {% if service.discounts %}
+                        {% for discount in service.discounts %}
+                            <div>
+                                <dt>Descuento {% if discount.type == "PERCENTAGE" %}{{ discount.value|floatformat:2 }}%{% else %}{{ discount.value|floatformat:2 }} €{% endif %}{% if discount.description %} · {{ discount.description }}{% endif %}</dt>
+                                <dd class="history-discount">−{{ discount.amount|floatformat:2 }} €</dd>
+                            </div>
+                        {% endfor %}
+                        <div>
+                            <dt>Total descuentos</dt>
+                            <dd class="history-discount">−{{ service.discount_amount|floatformat:2 }} €</dd>
+                        </div>
+                    {% else %}
+                        <div>
+                            <dt>Descuento ({% if service.discount_type == "PERCENTAGE" %}{{ service.discount_value|floatformat:2 }}%{% else %}{{ service.discount_value|floatformat:2 }} €{% endif %})</dt>
+                            <dd class="history-discount">−{{ service.discount_amount|floatformat:2 }} €</dd>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <dt>IVA ({{ service.tax_rate|floatformat:2 }}%)</dt>
+                        <dd>{{ service.tax_amount|floatformat:2 }} €</dd>
+                    </div>
+                    <div class="history-breakdown__total">
+                        <dt>Total cobrado</dt>
+                        <dd>{{ service.total_price|floatformat:2 }} €</dd>
+                    </div>
+                    {% if service.payment_method %}
+                        <div>
+                            <dt>Pago</dt>
+                            <dd>{{ service.get_payment_method_display }}</dd>
+                        </div>
+                    {% endif %}
+                </dl>
+
+                {% if service.notes %}
+                    <p class="history-card__notes">{{ service.notes }}</p>
+                {% endif %}
+            </article>
+        {% empty %}
+            <div class="contacts-empty">
+                <span class="contacts-empty__mark" aria-hidden="true">+</span>
+                <h2>{% if date_from or date_to %}No hay servicios en esas fechas{% else %}Aún no hay servicios en el histórico{% endif %}</h2>
+                <p>{% if date_from or date_to %}Prueba con otro rango o limpia el filtro.{% else %}Los servicios completados o cancelados aparecerán aquí.{% endif %}</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

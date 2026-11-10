@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="contact-detail-page" aria-labelledby="contact-detail-title">
+    <a class="contact-detail-back" href="{% url 'contacts' %}">← Volver a contactos</a>
+
+    <header class="contacts-heading contact-detail-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / CLIENTE</p>
+            <h1 id="contact-detail-title">{{ contact.name }}</h1>
+            <div class="contact-detail-meta">
+                <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                <span class="contact-status-badge {% if contact.is_active %}contact-status-badge--active{% endif %}">
+                    {% if contact.is_active %}Activo{% else %}Inactivo{% endif %}
+                </span>
+                {% if contact.descartable %}
+                    <span class="discardable-badge">No priorizar</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="contact-detail-stats" aria-label="Resumen del cliente">
+            <div class="contacts-total">
+                <strong>{{ dogs|length }}</strong>
+                <span>perros activos</span>
+            </div>
+            <div class="contacts-total">
+                <strong>{{ appointments|length }}</strong>
+                <span>citas</span>
+            </div>
+            <div class="contacts-total">
+                <strong>{{ service_history|length }}</strong>
+                <span>servicios históricos</span>
+            </div>
+        </div>
+    </header>
+
+    <section class="contact-detail-section" aria-labelledby="contact-dogs-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">FICHAS VINCULADAS</p>
+                <h2 id="contact-dogs-title">Perros activos</h2>
+            </div>
+        </header>
+        <div class="contact-detail-dogs">
+            {% for dog in dogs %}
+                <article class="contact-detail-dog">
+                    <span class="dog-avatar" aria-hidden="true">{{ dog.name|first|upper }}</span>
+                    <div class="dog-identity">
+                        <h3>{{ dog.name }}</h3>
+                        <p>
+                            {% if dog.breed %}{{ dog.breed.name }}{% else %}Raza no especificada{% endif %}
+                            {% if dog.sex %}<span>{{ dog.get_sex_display }}</span>{% endif %}
+                            {% if dog.color %}<span>{{ dog.color }}</span>{% endif %}
+                        </p>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="contact-detail-empty">Este cliente no tiene perros activos asociados.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="contact-detail-section" aria-labelledby="contact-appointments-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">AGENDA</p>
+                <h2 id="contact-appointments-title">Citas</h2>
+            </div>
+        </header>
+        <div class="contact-detail-records">
+            {% for appointment in appointments %}
+                <article class="contact-detail-record">
+                    <div>
+                        <p class="contact-kicker">{{ appointment.date|date:"d/m/Y · H:i" }}</p>
+                        <h3>{{ appointment.get_service_type_display }} · {{ appointment.dog.name }}</h3>
+                        {% if appointment.notes %}<p class="contact-detail-record__notes">{{ appointment.notes }}</p>{% endif %}
+                    </div>
+                    <div class="contact-detail-record__aside">
+                        <span class="history-status">{{ appointment.get_status_display }}</span>
+                        <strong>{{ appointment.price|floatformat:2 }} €</strong>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="contact-detail-empty">No hay citas asociadas a este cliente.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="contact-detail-section" aria-labelledby="contact-history-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">SERVICIOS FINALIZADOS</p>
+                <h2 id="contact-history-title">Histórico</h2>
+            </div>
+        </header>
+        <div class="contact-detail-records">
+            {% for service in service_history %}
+                <article class="contact-detail-record">
+                    <div>
+                        <p class="contact-kicker">{{ service.date|date:"d/m/Y · H:i" }}</p>
+                        <h3><a href="{% url 'service_history_detail' service.pk %}">{{ service.get_service_type_display }} · {{ service.dog.name }}</a></h3>
+                        {% if service.notes %}<p class="contact-detail-record__notes">{{ service.notes }}</p>{% endif %}
+                    </div>
+                    <div class="contact-detail-record__aside">
+                        <span class="history-status {% if service.status == 'COMPLETED' %}history-status--completed{% else %}history-status--cancelled{% endif %}">
+                            {{ service.get_status_display }}
+                        </span>
+                        <strong>{{ service.total_price|floatformat:2 }} €</strong>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="contact-detail-empty">Todavía no hay servicios en el histórico de este cliente.</p>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="home-page">
+    <header class="contacts-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / INICIO</p>
+            <h1>Bienvenido</h1>
+            <p class="contacts-intro">Gestiona contactos, perros y citas desde aquí.</p>
+        </div>
+        {% include "includes/add_button.html" with label="Añadir contacto" %}
+    </header>
+</section>
+{% endblock %}

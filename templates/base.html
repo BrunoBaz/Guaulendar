@@ -1,0 +1,26 @@
+{% load django_browser_reload static %}
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Guaulendar</title>
+        <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    </head>
+    <body>
+        <nav>
+            <ul class="header">
+                {% with current_url=request.resolver_match.url_name %}
+                    <li><a href="{% url 'appointments' %}" class="{% if current_url == 'appointments' %}is-active{% endif %}" {% if current_url == 'appointments' %}aria-current="page"{% endif %}>Citas</a></li>
+                    <li><a href="{% url 'contacts' %}" class="{% if current_url == 'contacts' %}is-active{% endif %}" {% if current_url == 'contacts' %}aria-current="page"{% endif %}>Contactos</a></li>
+                    <li><a href="{% url 'dogs_list' %}" class="{% if current_url == 'dogs_list' %}is-active{% endif %}" {% if current_url == 'dogs_list' %}aria-current="page"{% endif %}>Perros</a></li>
+                    <li><a href="{% url 'service_history' %}" class="{% if current_url == 'service_history' %}is-active{% endif %}" {% if current_url == 'service_history' %}aria-current="page"{% endif %}>Histórico</a></li>
+                {% endwith %}
+            </ul>
+        </nav>
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+        {% django_browser_reload_script %}
+    </body>
+</html>

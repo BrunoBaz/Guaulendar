@@ -1,0 +1,40 @@
+<dialog class="contact-dialog" id="contact-dialog" aria-labelledby="contact-dialog-title"
+    data-contact-mode="{{ contact_dialog_mode|default:'' }}"
+    data-open-on-load="{% if contact_form.errors %}true{% else %}false{% endif %}"
+    data-edit-contact-id="{{ edit_contact.pk|default:'' }}">
+    <header class="contact-dialog__header">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / CONTACTOS</p>
+            <h2 id="contact-dialog-title">{% if edit_contact %}Editar <span>contacto</span>{% else %}Añadir <span>contacto</span>{% endif %}</h2>
+            <p class="contact-dialog__intro">Completa los datos de la persona responsable.</p>
+        </div>
+        <button class="contact-dialog__close" type="button" data-close-contact-dialog
+            aria-label="Cerrar ventana">×</button>
+    </header>
+
+    {% if contact_dialog_mode == "dog" %}
+        <div class="contact-dialog__fields contact-dialog__fields--form">
+            {% include "includes/contact_dialog_fields.html" with contact_form=contact_form dog_mode=True %}
+        </div>
+        <footer class="contact-dialog__actions">
+            <button class="contact-dialog__button contact-dialog__button--secondary" type="button"
+                data-close-contact-dialog>Cancelar</button>
+            <button class="contact-dialog__button contact-dialog__button--primary" id="save-contact-dialog"
+                type="button" data-label-dog="Añadir al perro">Añadir al perro</button>
+        </footer>
+    {% else %}
+        <form method="post" id="contact-registration-form" class="contact-dialog__form">
+            {% csrf_token %}
+            <input type="hidden" name="contact_id" id="contact-id" value="{{ edit_contact.pk|default:'' }}">
+            <input type="hidden" name="contact_action" id="contact-action"
+                value="{% if edit_contact %}edit{% endif %}">
+            {% include "includes/contact_dialog_fields.html" with contact_form=contact_form %}
+            <footer class="contact-dialog__actions">
+                <button class="contact-dialog__button contact-dialog__button--secondary" type="button"
+                    data-close-contact-dialog>Cancelar</button>
+                <button class="contact-dialog__button contact-dialog__button--primary" id="save-contact-dialog"
+                    type="submit">{% if edit_contact %}Guardar cambios{% else %}Guardar contacto{% endif %}</button>
+            </footer>
+        </form>
+    {% endif %}
+</dialog>

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="appointments-page" aria-labelledby="appointments-title">
+    <header class="appointments-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / AGENDA</p>
+            <h1 id="appointments-title">Agenda <span>de citas</span></h1>
+            <p class="contacts-intro">Organiza horarios, servicios y responsables de un vistazo.</p>
+        </div>
+        <div class="page-actions">
+        
+            <div class="contacts-total" aria-label="Citas en agenda">
+                <strong>{{ appointment_count }}</strong>
+                <span>citas en agenda</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="calendar-legend" aria-label="Estados de las citas">
+        <span><i class="status-dot status-dot--pending"></i>Pendiente</span>
+        <span><i class="status-dot status-dot--confirmed"></i>Confirmada</span>
+        <span class="service-legend-label">Servicios:</span>
+        <span><i class="service-swatch service-swatch--bano"></i>Baño</span>
+        <span><i class="service-swatch service-swatch--completo"></i>Completo</span>
+        <span class="calendar-duration-note">Cada cita ocupa una hora y media en la vista.</span>
+    </div>
+
+    <section class="directory-search appointment-search" aria-label="Filtrar citas">
+        <label class="directory-search__label" for="appointments-filter">Buscar cita, perro o responsable</label>
+        <div class="directory-search__control">
+            <input id="appointments-filter" type="search" list="appointments-filter-options"
+                autocomplete="off" placeholder="Servicio, nombre del perro o responsable">
+            <button class="directory-search__clear" id="clear-appointments-filter" type="button">Limpiar</button>
+        </div>
+        <output class="directory-search__count" id="appointments-filter-count" aria-live="polite">
+            {{ appointment_count }} citas
+        </output>
+        <datalist id="appointments-filter-options"></datalist>
+    </section>
+
+    <div class="calendar-panel">
+        <div id="appointments-calendar" data-timezone="{{ calendar_timezone }}"
+            aria-label="Calendario de citas"></div>
+        <noscript>Activa JavaScript para visualizar el calendario.</noscript>
+    </div>
+</section>
+
+<dialog class="appointment-dialog" id="appointment-dialog" aria-labelledby="appointment-dialog-title">
+    <form method="dialog" class="appointment-dialog__close-form">
+        <button class="appointment-dialog__close" aria-label="Cerrar detalle">Cerrar</button>
+    </form>
+    <p class="contacts-eyebrow" id="appointment-detail-status"></p>
+    <h2 id="appointment-dialog-title">Detalle de la cita</h2>
+    <p class="appointment-dialog__datetime" id="appointment-detail-datetime"></p>
+    <dl class="appointment-detail-list">
+        <div><dt>Servicio</dt><dd id="appointment-detail-service"></dd></div>
+        <div><dt>Perro</dt><dd id="appointment-detail-dog"></dd></div>
+        <div><dt>Precio aproximado</dt><dd id="appointment-detail-price"></dd></div>
+        <div><dt>Responsables</dt><dd><ul id="appointment-detail-owners"></ul></dd></div>
+        <div id="appointment-detail-notes-row"><dt>Notas</dt><dd id="appointment-detail-notes"></dd></div>
+    </dl>
+    <footer class="contact-dialog__actions">
+        <button class="contact-dialog__button contact-dialog__button--primary"
+            id="edit-appointment-button" type="button">Editar cita</button>
+    </footer>
+    <form method="post" id="appointment-quick-status-form" class="appointment-quick-status">
+        {% csrf_token %}
+        <input type="hidden" name="appointment_id" id="quick-status-appointment-id">
+        <input type="hidden" name="quick_status" id="quick-status-value">
+        <p class="appointment-quick-status__label">Cambiar estado</p>
+        <div class="appointment-quick-status__actions">
+            <button type="button" data-quick-status="PENDING">Pendiente</button>
+            <button type="button" data-quick-status="CONFIRMED">Confirmar</button>
+            <button type="button" data-quick-status="COMPLETED">Completar y cobrar</button>
+            <button type="button" data-quick-status="CANCELLED">Cancelar cita</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog class="appointment-create-dialog" id="appointment-create-dialog"
+    aria-labelledby="appointment-create-dialog-title"
+    data-open-on-load="{% if appointment_form.errors or open_create_dialog %}true{% else %}false{% endif %}"
+    data-appointment-id="{{ appointment_id }}"
+    data-tax-rate="{{ tax_rate }}">
+    <header class="appointment-create-dialog__header">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / AGENDA</p>
+            <h2 id="appointment-create-dialog-title">{% if appointment_id %}Editar cita{% else %}Nueva cita{% endif %}</h2>
+            <p class="appointment-dialog__datetime" id="appointment-create-dialog-datetime"></p>
+        </div>
+        <form method="dialog">
+            <button class="contact-dialog__close" type="submit" aria-label="Cerrar ventana">×</button>
+        </form>
+    </header>
+
+    <form method="post" class="appointment-create-dialog__form">
+        {% csrf_token %}
+        <input type="hidden" name="appointment_id" id="appointment-id" value="{{ appointment_id }}">
+        <input type="hidden" name="original_status" id="original-appointment-status"
+            value="{{ original_status }}">
+        {% if appointment_form.non_field_errors %}
+            <div class="dog-form-errors" role="alert">{{ appointment_form.non_field_errors }}</div>
+        {% endif %}
+        {% if appointment_form.discounts_json.errors %}
+            <div class="dog-form-errors" role="alert">{{ appointment_form.discounts_json.errors }}</div>
+        {% endif %}
+        {% for field in appointment_form %}
+            {% if field.name != "discounts_json" and field.name != "payment_method" %}
+                <div class="contact-dialog__field" data-appointment-field="{{ field.name }}"
+                    {% if field.name == "status" and not appointment_id %}hidden{% endif %}>
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endif %}
+        {% endfor %}
+        {{ appointment_form.discounts_json }}
+        {{ appointment_form.payment_method }}
+        {{ appointment_form.payment_method.errors }}
+        <footer class="contact-dialog__actions">
+            <button class="contact-dialog__button contact-dialog__button--secondary"
+                type="button" data-close-appointment-form>Cancelar</button>
+            <button class="contact-dialog__button contact-dialog__button--primary" id="save-appointment"
+                type="submit">
+                {% if appointment_id %}Guardar cambios{% else %}Crear cita{% endif %}
+            </button>
+        </footer>
+    </form>
+</dialog>
+
+<dialog class="appointment-create-dialog appointment-pricing-dialog" id="appointment-completion-dialog"
+    aria-labelledby="appointment-completion-title">
+    <header class="appointment-create-dialog__header">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / CIERRE</p>
+            <h2 id="appointment-completion-title">Precio final del servicio</h2>
+            <p class="appointment-dialog__datetime">Los descuentos se aplican sobre la base imponible.</p>
+        </div>
+    </header>
+    <div class="appointment-pricing-dialog__summary">
+        <div><span>Precio con IVA</span><strong id="completion-gross"></strong></div>
+        <div><span>Base imponible</span><strong id="completion-base"></strong></div>
+        <div><span>IVA incluido (se mantiene)</span><strong id="completion-tax"></strong></div>
+        <div><span>Descuento total sobre la base</span><strong id="completion-discount"></strong></div>
+        <div class="appointment-pricing-dialog__total">
+            <span>Total final</span><strong id="completion-total"></strong>
+        </div>
+    </div>
+    <section class="appointment-discounts" aria-labelledby="appointment-discounts-title">
+        <h3 id="appointment-discounts-title">Descuentos</h3>
+        <div id="appointment-discount-rows"></div>
+        <button class="contact-dialog__button contact-dialog__button--secondary"
+            id="add-appointment-discount" type="button">Añadir descuento</button>
+        <p class="appointment-pricing-dialog__error" id="completion-pricing-error" role="alert" hidden></p>
+    </section>
+    <div class="contact-dialog__field appointment-payment-method">
+        <label for="appointment-payment-method-choice">Método de pago</label>
+        <select id="appointment-payment-method-choice" class="appointment-create-dialog__input" required>
+            <option value="">Selecciona una forma de pago</option>
+            <option value="CASH">Efectivo</option>
+            <option value="CARD">Tarjeta</option>
+        </select>
+    </div>
+    <footer class="contact-dialog__actions">
+        <button class="contact-dialog__button contact-dialog__button--secondary"
+            id="cancel-appointment-completion" type="button">Volver</button>
+        <button class="contact-dialog__button contact-dialog__button--primary"
+            id="confirm-appointment-completion" type="button">Completar y guardar</button>
+    </footer>
+</dialog>
+
+{{ calendar_events|json_script:"appointment-calendar-data" }}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales-all.global.min.js" defer></script>
+<script src="{% static 'js/appointments-calendar.js' %}" defer></script>
+{% endblock %}

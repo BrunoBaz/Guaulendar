@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="record-detail-page" aria-labelledby="history-detail-title">
+    <a class="contact-detail-back" href="{% url 'service_history' %}">← Volver al histórico</a>
+
+    <header class="contacts-heading record-detail-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / HISTÓRICO #{{ service.pk }}</p>
+            <h1 id="history-detail-title">{{ service.get_service_type_display }} <span>· {{ service.dog_snapshot.name|default:service.dog.name }}</span></h1>
+            <p class="contacts-intro">{{ service.date|date:"d/m/Y · H:i" }}</p>
+        </div>
+        <div class="history-summary">
+            <span class="history-status {% if service.status == 'COMPLETED' %}history-status--completed{% else %}history-status--cancelled{% endif %}">
+                {{ service.get_status_display }}
+            </span>
+            <div class="history-total-collected">
+                <span>Total cobrado</span>
+                <strong>{{ service.total_price|floatformat:2 }} €</strong>
+            </div>
+        </div>
+    </header>
+
+    <section class="contact-detail-section" aria-labelledby="history-service-info-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">SERVICIO REALIZADO</p>
+                <h2 id="history-service-info-title">Detalle</h2>
+            </div>
+        </header>
+        <dl class="history-breakdown history-detail-breakdown">
+            <div>
+                <dt>Perro</dt>
+                <dd><a href="{% url 'dog_detail' service.dog_id %}">{{ service.dog_snapshot.name|default:service.dog.name }}</a></dd>
+            </div>
+            {% if service.dog_snapshot.breed %}
+                <div>
+                    <dt>Raza</dt>
+                    <dd>{{ service.dog_snapshot.breed }}</dd>
+                </div>
+            {% endif %}
+            {% if service.dog_snapshot.sex %}
+                <div>
+                    <dt>Sexo</dt>
+                    <dd>{{ service.dog_snapshot.sex }}</dd>
+                </div>
+            {% endif %}
+            <div>
+                <dt>Servicio</dt>
+                <dd>{{ service.get_service_type_display }}</dd>
+            </div>
+            <div>
+                <dt>Precio con IVA</dt>
+                <dd>{{ service.price|floatformat:2 }} €</dd>
+            </div>
+            <div>
+                <dt>Base imponible</dt>
+                <dd>{{ service.taxable_base|floatformat:2 }} €</dd>
+            </div>
+            {% if service.discounts %}
+                {% for discount in service.discounts %}
+                    <div>
+                        <dt>Descuento {% if discount.type == "PERCENTAGE" %}{{ discount.value|floatformat:2 }}%{% else %}{{ discount.value|floatformat:2 }} €{% endif %}{% if discount.description %} · {{ discount.description }}{% endif %}</dt>
+                        <dd class="history-discount">−{{ discount.amount|floatformat:2 }} €</dd>
+                    </div>
+                {% endfor %}
+                <div>
+                    <dt>Total descuentos</dt>
+                    <dd class="history-discount">−{{ service.discount_amount|floatformat:2 }} €</dd>
+                </div>
+            {% else %}
+                <div>
+                    <dt>Descuento ({% if service.discount_type == "PERCENTAGE" %}{{ service.discount_value|floatformat:2 }}%{% else %}{{ service.discount_value|floatformat:2 }} €{% endif %})</dt>
+                    <dd class="history-discount">−{{ service.discount_amount|floatformat:2 }} €</dd>
+                </div>
+            {% endif %}
+            <div>
+                <dt>IVA ({{ service.tax_rate|floatformat:2 }}%)</dt>
+                <dd>{{ service.tax_amount|floatformat:2 }} €</dd>
+            </div>
+            <div class="history-breakdown__total">
+                <dt>Total cobrado</dt>
+                <dd>{{ service.total_price|floatformat:2 }} €</dd>
+            </div>
+            {% if service.payment_method %}
+                <div>
+                    <dt>Pago</dt>
+                    <dd>{{ service.get_payment_method_display }}</dd>
+                </div>
+            {% endif %}
+        </dl>
+        {% if service.notes %}
+            <p class="history-card__notes">{{ service.notes }}</p>
+        {% endif %}
+    </section>
+
+    <section class="contact-detail-section" aria-labelledby="history-owners-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">RESPONSABLES EN LA FECHA DEL SERVICIO</p>
+                <h2 id="history-owners-title">Responsables</h2>
+            </div>
+        </header>
+        <div class="contact-detail-records">
+            {% if service.dog_snapshot.owners %}
+                {% for contact in service.dog_snapshot.owners %}
+                    <article class="contact-detail-record">
+                        <div class="contact-detail-owner">
+                            <span class="owner-initial" aria-hidden="true">{{ contact.name|first|upper }}</span>
+                            <div>
+                                <h3>{{ contact.name }}</h3>
+                                {% if contact.phone %}<a class="contact-detail-phone" href="tel:{{ contact.phone }}">{{ contact.phone }}</a>{% endif %}
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            {% else %}
+                <p class="contact-detail-empty">Este servicio no tiene una instantánea de responsables. Se muestran los responsables actuales.</p>
+                {% for contact in service.dog.owners.all %}
+                <article class="contact-detail-record">
+                    <div class="contact-detail-owner">
+                        <span class="owner-initial" aria-hidden="true">{{ contact.name|first|upper }}</span>
+                        <div>
+                            <h3><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h3>
+                            <a class="contact-detail-phone" href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                        </div>
+                        {% if contact.descartable %}<span class="discardable-badge">No priorizar</span>{% endif %}
+                    </div>
+                </article>
+                {% empty %}
+                    <p class="contact-detail-empty">El perro no tiene responsables asociados actualmente.</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </section>
+</section>
+{% endblock %}

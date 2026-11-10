@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="contacts-page" aria-labelledby="contacts-title">
+    <header class="contacts-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / CONTACTOS</p>
+            <h1 id="contacts-title">Personas <span>y sus perros</span></h1>
+            <p class="contacts-intro">Cada familia, con todos sus compañeros.</p>
+        </div>
+        <div class="page-actions">
+            <div class="contacts-total" aria-label="Contactos">
+                <strong>{{ contacts|length }}</strong>
+                <span>contactos</span>
+            </div>
+            <button class="add-button" id="open-contact-dialog" type="button"
+                aria-haspopup="dialog" aria-controls="contact-dialog">
+                <span class="add-button__icon" aria-hidden="true">+</span>
+                <span>Añadir contacto</span>
+            </button>
+        </div>
+    </header>
+
+    <section class="directory-search" aria-label="Buscar contactos">
+        <label class="directory-search__label" for="contacts-filter">Buscar contacto o perro</label>
+        <div class="directory-search__control">
+            <input id="contacts-filter" type="search" list="contacts-filter-options"
+                data-directory-filter="contacts-grid" data-directory-count="contacts-filter-count"
+                data-singular-label="contacto" data-plural-label="contactos"
+                autocomplete="off" placeholder="Nombre, teléfono o perro">
+            <button class="directory-search__clear" type="button" data-clear-filter="contacts-filter">Limpiar</button>
+        </div>
+        <output class="directory-search__count" id="contacts-filter-count" aria-live="polite">{{ contacts|length }} contactos</output>
+        <datalist id="contacts-filter-options">
+            {% for contact in contacts %}
+                <option value="{{ contact.name }}">
+                <option value="{{ contact.phone }}">
+                {% for dog in contact.active_dogs %}
+                    <option value="{{ dog.name }}">
+                {% endfor %}
+            {% endfor %}
+        </datalist>
+    </section>
+
+    <div class="contact-status-filter" role="group" aria-label="Filtrar contactos por estado">
+        <label for="contacts-status-filter">Mostrar</label>
+        <select id="contacts-status-filter" data-filter-status-for="contacts-grid">
+            <option value="all"{% if status_filter == "all" %} selected{% endif %}>Todos</option>
+            <option value="active"{% if status_filter == "active" %} selected{% endif %}>Activos</option>
+            <option value="inactive"{% if status_filter == "inactive" %} selected{% endif %}>Inactivos</option>
+        </select>
+    </div>
+
+    <div class="contacts-grid" id="contacts-grid">
+    {% for contact in contacts %}
+        <article class="contact-card" data-filter-item data-status="{% if contact.is_active %}active{% else %}inactive{% endif %}">
+            <header class="contact-card__header">
+                <span class="contact-avatar" aria-hidden="true">{{ contact.name|first|upper }}</span>
+                <div class="contact-identity">
+                    <p class="contact-kicker">{% if contact.is_active %}RESPONSABLE ACTIVO{% else %}RESPONSABLE INACTIVO{% endif %}</p>
+                    <h2><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h2>
+                    {% if contact.descartable %}
+                        <span class="discardable-badge" title="Cliente marcado como no prioritario para futuras visitas">
+                            No priorizar
+                        </span>
+                    {% endif %}
+                    <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                </div>
+                <span class="dog-count">{% if contact.active_dogs|length == 1 %}1 <span>perro activo</span>{% else %}{{ contact.active_dogs|length }} <span>perros activos</span>{% endif %}</span>
+                {% if not contact.is_active %}<span class="contact-status-badge">Inactivo</span>{% endif %}
+            </header>
+
+            <div class="contact-card__body">
+                <h3 class="dog-list-title">
+                    {% if contact.active_dogs|length == 1 %}Perro activo{% else %}Perros activos{% endif %}
+                    <span>{{ contact.active_dogs|length|stringformat:"02d" }}</span>
+                </h3>
+                <ul class="dog-list">
+                    {% for dog in contact.active_dogs %}
+                        <li class="dog-row">
+                            <span class="dog-avatar" aria-hidden="true">{{ dog.name|first|upper }}</span>
+                            <div class="dog-identity">
+                                <h4>{{ dog.name }}</h4>
+                                <p>
+                                    {% if dog.breed %}{{ dog.breed.name }}{% else %}Raza no especificada{% endif %}
+                                    {% if dog.sex %}<span>{{ dog.get_sex_display }}</span>{% endif %}
+                                    {% if dog.color %}<span>{{ dog.color }}</span>{% endif %}
+                                </p>
+                            </div>
+                        </li>
+                    {% empty %}
+                        <li class="dog-empty">Este contacto no tiene perros activos.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <footer class="contact-card__actions">
+                <button class="contact-dialog__button contact-dialog__button--secondary"
+                    type="button" data-edit-contact="{{ contact.pk }}"
+                    data-name="{{ contact.name }}" data-phone="{{ contact.phone }}"
+                    data-active="{{ contact.is_active|yesno:'true,false' }}"
+                    data-descartable="{{ contact.descartable|yesno:'true,false' }}">
+                    Editar contacto
+                </button>
+                <form method="post" id="contact-status-form-{{ contact.pk }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="contact_id" value="{{ contact.pk }}">
+                    <input type="hidden" name="contact_action"
+                        value="{% if contact.is_active %}deactivate{% else %}activate{% endif %}">
+                </form>
+                <button class="contact-dialog__button {% if contact.is_active %}contact-dialog__button--secondary{% else %}contact-dialog__button--primary{% endif %}"
+                    type="button" data-status-confirm
+                    data-status-form="contact-status-form-{{ contact.pk }}"
+                    data-status-title="{% if contact.is_active %}Dar de baja responsable{% else %}Dar de alta responsable{% endif %}"
+                    data-status-message="¿Quieres {% if contact.is_active %}dar de baja a{% else %}dar de alta a{% endif %} {{ contact.name }}?"
+                    data-status-confirm-label="{% if contact.is_active %}Dar de baja{% else %}Dar de alta{% endif %}">
+                    {% if contact.is_active %}Dar de baja{% else %}Dar de alta{% endif %}
+                </button>
+            </footer>
+        </article>
+    {% empty %}
+        <div class="contacts-empty">
+            <span class="contacts-empty__mark" aria-hidden="true">+</span>
+            <h2>No hay contactos para mostrar</h2>
+            <p>Añade un contacto o cambia el filtro de estado.</p>
+        </div>
+    {% endfor %}
+    </div>
+    <p class="directory-search__empty" data-filter-empty="contacts-grid" hidden>No hay contactos que coincidan con la búsqueda.</p>
+</section>
+
+{% include "includes/contact_dialog.html" with contact_dialog_mode="contacts" contact_form=form edit_contact=edit_contact %}
+{% include "includes/status_confirmation_dialog.html" %}
+
+<script src="{% static 'js/directory-filter.js' %}" defer></script>
+<script src="{% static 'js/contacts-dialog.js' %}" defer></script>
+<script src="{% static 'js/status-confirmation-dialog.js' %}" defer></script>
+{% endblock %}

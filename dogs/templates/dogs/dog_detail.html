@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="record-detail-page" aria-labelledby="dog-detail-title">
+    <a class="contact-detail-back" href="{% url 'dogs_list' %}">← Volver a perros</a>
+
+    <header class="contacts-heading record-detail-heading">
+        <div>
+            <p class="contacts-eyebrow">GUAULENDAR / FICHA DEL PERRO</p>
+            <h1 id="dog-detail-title">{{ dog.name }}</h1>
+            <div class="contact-detail-meta">
+                <span class="dog-status {% if dog.is_active %}dog-status--active{% else %}dog-status--inactive{% endif %}">
+                    {% if dog.is_active %}Activo{% else %}Inactivo{% endif %}
+                </span>
+                {% if dog.breed %}<span>{{ dog.breed.name }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="contact-detail-stats" aria-label="Resumen del perro">
+            <div class="contacts-total">
+                <strong>{{ dog.owners.all|length }}</strong>
+                <span>responsables</span>
+            </div>
+            <div class="contacts-total">
+                <strong>{{ appointments|length }}</strong>
+                <span>citas</span>
+            </div>
+            <div class="contacts-total">
+                <strong>{{ service_history|length }}</strong>
+                <span>servicios históricos</span>
+            </div>
+        </div>
+    </header>
+
+    <section class="contact-detail-section" aria-labelledby="dog-facts-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">INFORMACIÓN</p>
+                <h2 id="dog-facts-title">Ficha</h2>
+            </div>
+            <button class="contact-dialog__button contact-dialog__button--secondary"
+                type="button" id="open-dog-edit-dialog"
+                aria-haspopup="dialog" aria-controls="dog-edit-dialog">Editar ficha</button>
+        </header>
+        <dl class="dog-facts dog-detail-facts">
+            <div class="dog-fact">
+                <dt>Raza</dt>
+                <dd>{% if dog.breed %}{{ dog.breed.name }}{% else %}Sin especificar{% endif %}</dd>
+            </div>
+            <div class="dog-fact">
+                <dt>Sexo</dt>
+                <dd>{% if dog.sex %}{{ dog.get_sex_display }}{% else %}Sin especificar{% endif %}</dd>
+            </div>
+            <div class="dog-fact">
+                <dt>Color</dt>
+                <dd>{% if dog.color %}{{ dog.color }}{% else %}Sin especificar{% endif %}</dd>
+            </div>
+            <div class="dog-fact">
+                <dt>Pelaje</dt>
+                <dd>{% if dog.coat_type %}{{ dog.coat_type }}{% else %}Sin especificar{% endif %}</dd>
+            </div>
+        </dl>
+        {% if dog.dog_notes or dog.dog_issues %}
+            <div class="dog-card__notes">
+                {% if dog.dog_notes %}<p><strong>Notas:</strong> {{ dog.dog_notes }}</p>{% endif %}
+                {% if dog.dog_issues %}<p><strong>Observaciones:</strong> {{ dog.dog_issues }}</p>{% endif %}
+            </div>
+        {% endif %}
+    </section>
+
+    <dialog class="contact-dialog" id="dog-edit-dialog"
+        aria-labelledby="dog-edit-dialog-title"
+        data-open-on-load="{% if dog_form.errors %}true{% else %}false{% endif %}">
+        <header class="contact-dialog__header">
+            <div>
+                <p class="contacts-eyebrow">GUAULENDAR / PERROS</p>
+                <h2 id="dog-edit-dialog-title">Editar ficha</h2>
+                <p class="contact-dialog__intro">Actualiza los datos y el estado del perro.</p>
+            </div>
+            <button class="contact-dialog__close" type="button"
+                data-close-dog-edit-dialog aria-label="Cerrar ventana">×</button>
+        </header>
+        <form method="post" id="dog-detail-edit-form"
+            data-confirm-inactive='[name="is_active"]'
+            data-status-title="Dar de baja perro"
+            data-status-message="¿Quieres dar de baja este perro? Sus citas pendientes se eliminarán y su ficha e histórico se conservarán."
+            data-status-confirm-label="Dar de baja">
+            {% csrf_token %}
+            <input type="hidden" name="dog_action" value="edit">
+            {% for hidden in dog_form.hidden_fields %}{{ hidden }}{% endfor %}
+            {% if dog_form.non_field_errors %}
+                <div class="dog-form-errors" role="alert">{{ dog_form.non_field_errors }}</div>
+            {% endif %}
+            <div class="contact-dialog__field">
+                {{ dog_form.name.label_tag }}
+                {{ dog_form.name }}
+                {{ dog_form.name.errors }}
+            </div>
+            <div class="contact-dialog__field">
+                {{ dog_form.breed.label_tag }}
+                {{ dog_form.breed }}
+                {{ dog_form.breed.errors }}
+            </div>
+            <div class="dog-dialog__field-row">
+                <div class="contact-dialog__field">
+                    {{ dog_form.sex.label_tag }}
+                    {{ dog_form.sex }}
+                    {{ dog_form.sex.errors }}
+                </div>
+                <div class="contact-dialog__field">
+                    {{ dog_form.color.label_tag }}
+                    {{ dog_form.color }}
+                    {{ dog_form.color.errors }}
+                </div>
+            </div>
+            <div class="contact-dialog__field">
+                {{ dog_form.coat_type.label_tag }}
+                {{ dog_form.coat_type }}
+                {{ dog_form.coat_type.errors }}
+            </div>
+            <div class="dog-dialog__field-row">
+                <div class="contact-dialog__field">
+                    {{ dog_form.dog_notes.label_tag }}
+                    {{ dog_form.dog_notes }}
+                    {{ dog_form.dog_notes.errors }}
+                </div>
+                <div class="contact-dialog__field">
+                    {{ dog_form.dog_issues.label_tag }}
+                    {{ dog_form.dog_issues }}
+                    {{ dog_form.dog_issues.errors }}
+                </div>
+            </div>
+            <label class="contact-dialog__check-field">
+                {{ dog_form.is_active }}
+                <span>Perro activo</span>
+                {{ dog_form.is_active.errors }}
+            </label>
+            <p class="dog-dialog__hint">Los responsables asociados se gestionan desde la ficha de perros.</p>
+            <footer class="contact-dialog__actions">
+                <button class="contact-dialog__button contact-dialog__button--secondary"
+                    type="button" data-close-dog-edit-dialog>Cancelar</button>
+                <button class="contact-dialog__button contact-dialog__button--primary"
+                    type="submit">Guardar cambios</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <section class="contact-detail-section" aria-labelledby="dog-owners-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">CLIENTES VINCULADOS</p>
+                <h2 id="dog-owners-title">Responsables</h2>
+            </div>
+        </header>
+        {% if dog.owners.all %}
+            <div class="directory-search" aria-label="Buscar responsables">
+                <label class="directory-search__label" for="dog-owners-filter">Buscar responsable</label>
+                <div class="directory-search__control">
+                    <input id="dog-owners-filter" type="search"
+                        data-directory-filter="dog-owners-grid"
+                        data-directory-count="dog-owners-filter-count"
+                        data-singular-label="responsable" data-plural-label="responsables"
+                        autocomplete="off" placeholder="Nombre o teléfono">
+                    <button class="directory-search__clear" type="button"
+                        data-clear-filter="dog-owners-filter">Limpiar</button>
+                </div>
+                <output class="directory-search__count" id="dog-owners-filter-count"
+                    aria-live="polite">{{ dog.owners.all|length }} responsables</output>
+            </div>
+        {% endif %}
+        <div class="contact-detail-records" id="dog-owners-grid">
+            {% for contact in dog.owners.all %}
+                <article class="contact-detail-record" data-filter-item>
+                    <div class="contact-detail-owner">
+                        <span class="owner-initial" aria-hidden="true">{{ contact.name|first|upper }}</span>
+                        <div>
+                            <h3><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h3>
+                            <a class="contact-detail-phone" href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                        </div>
+                        {% if contact.descartable %}<span class="discardable-badge">No priorizar</span>{% endif %}
+                    </div>
+                    <span class="contact-status-badge {% if contact.is_active %}contact-status-badge--active{% endif %}">
+                        {% if contact.is_active %}Activo{% else %}Inactivo{% endif %}
+                    </span>
+                </article>
+            {% empty %}
+                <p class="contact-detail-empty">Este perro no tiene responsables asociados.</p>
+            {% endfor %}
+        </div>
+        <p class="directory-search__empty" data-filter-empty="dog-owners-grid" hidden>
+            No hay responsables que coincidan con la búsqueda.
+        </p>
+    </section>
+
+    <section class="contact-detail-section" aria-labelledby="dog-appointments-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">AGENDA</p>
+                <h2 id="dog-appointments-title">Citas</h2>
+            </div>
+            {% if dog.is_active %}
+                <button class="add-button" type="button" id="open-dog-appointment-dialog"
+                    aria-haspopup="dialog" aria-controls="dog-appointment-dialog">
+                    <span class="add-button__icon" aria-hidden="true">+</span>
+                    <span>Añadir cita</span>
+                </button>
+            {% endif %}
+        </header>
+        <div class="contact-detail-records">
+            {% for appointment in appointments %}
+                <article class="contact-detail-record">
+                    <div>
+                        <p class="contact-kicker">{{ appointment.date|date:"d/m/Y · H:i" }}</p>
+                        <h3>{{ appointment.get_service_type_display }}</h3>
+                        {% if appointment.notes %}<p class="contact-detail-record__notes">{{ appointment.notes }}</p>{% endif %}
+                    </div>
+                    <div class="contact-detail-record__aside">
+                        <span class="history-status">{{ appointment.get_status_display }}</span>
+                        <strong>{{ appointment.price|floatformat:2 }} €</strong>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="contact-detail-empty">No hay citas asociadas a este perro.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if dog.is_active %}
+        <dialog class="appointment-create-dialog" id="dog-appointment-dialog"
+            aria-labelledby="dog-appointment-dialog-title"
+            data-open-on-load="{% if appointment_form.errors %}true{% else %}false{% endif %}">
+            <header class="appointment-create-dialog__header">
+                <div>
+                    <p class="contacts-eyebrow">GUAULENDAR / AGENDA</p>
+                    <h2 id="dog-appointment-dialog-title">Nueva cita · {{ dog.name }}</h2>
+                </div>
+                <button class="contact-dialog__close" type="button"
+                    data-close-dog-appointment aria-label="Cerrar ventana">×</button>
+            </header>
+            <form method="post" class="appointment-create-dialog__form">
+                {% csrf_token %}
+                {% if appointment_form.non_field_errors %}
+                    <div class="dog-form-errors" role="alert">{{ appointment_form.non_field_errors }}</div>
+                {% endif %}
+                {{ appointment_form.dog.as_hidden }}
+                {{ appointment_form.status.as_hidden }}
+                {{ appointment_form.discounts_json }}
+                {% if appointment_form.discounts_json.errors %}
+                    <div class="dog-form-errors" role="alert">{{ appointment_form.discounts_json.errors }}</div>
+                {% endif %}
+                {% for field in appointment_form %}
+                    {% if field.name == "service_type" or field.name == "date" or field.name == "price" or field.name == "notes" %}
+                        <div class="contact-dialog__field">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <footer class="contact-dialog__actions">
+                    <button class="contact-dialog__button contact-dialog__button--secondary"
+                        type="button" data-close-dog-appointment>Cancelar</button>
+                    <button class="contact-dialog__button contact-dialog__button--primary"
+                        type="submit">Crear cita</button>
+                </footer>
+            </form>
+        </dialog>
+    {% endif %}
+
+    <section class="contact-detail-section" aria-labelledby="dog-history-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">SERVICIOS FINALIZADOS</p>
+                <h2 id="dog-history-title">Histórico</h2>
+            </div>
+        </header>
+        <div class="contact-detail-records">
+            {% for service in service_history %}
+                <article class="contact-detail-record">
+                    <div>
+                        <p class="contact-kicker">{{ service.date|date:"d/m/Y · H:i" }}</p>
+                        <h3><a href="{% url 'service_history_detail' service.pk %}">{{ service.get_service_type_display }}</a></h3>
+                    </div>
+                    <div class="contact-detail-record__aside">
+                        <span class="history-status {% if service.status == 'COMPLETED' %}history-status--completed{% else %}history-status--cancelled{% endif %}">
+                            {{ service.get_status_display }}
+                        </span>
+                        <strong>{{ service.total_price|floatformat:2 }} €</strong>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="contact-detail-empty">Todavía no hay servicios en el histórico de este perro.</p>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+<script src="{% static 'js/dog-detail.js' %}" defer></script>
+<script src="{% static 'js/status-confirmation-dialog.js' %}" defer></script>
+{% include "includes/status_confirmation_dialog.html" %}
+{% endblock %}

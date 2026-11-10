@@ -1,0 +1,17 @@
+<div class="contact-dialog__field">
+    {{ contact_form.name.label_tag }}
+    {{ contact_form.name }}
+    {{ contact_form.name.errors }}
+</div>
+<div class="contact-dialog__field">
+    {{ contact_form.phone.label_tag }}
+    {{ contact_form.phone }}
+    {{ contact_form.phone.errors }}
+</div>
+{% if not dog_mode %}
+    <div class="contact-dialog__check-field">
+        {{ contact_form.descartable }}
+        {{ contact_form.descartable.label_tag }}
+        {{ contact_form.descartable.errors }}
+    </div>
+{% endif %}
