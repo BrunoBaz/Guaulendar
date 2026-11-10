@@ -3,5 +3,8 @@ __pycache__/
 *.py[cod]
 *.sqlite3
 .env
+.env.local
 staticfiles/
 media/
+.neon
+node_modules/
