@@ -23,6 +23,16 @@ load_dotenv(BASE_DIR / ".env.local")
 load_dotenv(BASE_DIR / ".env")
 
 
+def env_bool(name, default=False):
+    """Lee una variable de entorno booleana (1/true/yes/on)."""
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name):
+    """Lee una variable de entorno con valores separados por comas."""
+    return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
@@ -30,13 +40,29 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY',)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = [
-    "192.168.1.129",
-    "127.0.0.1"
-]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 
+# Render publica el hostname público del servicio en esta variable.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["192.168.1.129", "127.0.0.1", "localhost"]
+
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+if not DEBUG:
+    # Render termina TLS en su proxy y reenvía el protocolo original.
+  SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+  SECURE_SSL_REDIRECT = not DEBUG
+
+  SESSION_COOKIE_SECURE = not DEBUG
+  CSRF_COOKIE_SECURE = not DEBUG
 
 # Application definition
 
@@ -57,6 +83,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -145,6 +172,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 
 # Email
