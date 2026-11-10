@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load contact_filters %}
 {% block content %}
 <section class="contacts-page" aria-labelledby="contacts-title">
     <header class="contacts-heading">
@@ -65,6 +66,9 @@
                         </span>
                     {% endif %}
                     <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                    <a class="whatsapp-link" href="https://wa.me/{{ contact.phone|whatsapp_phone }}"
+                        target="_blank" rel="noopener noreferrer"
+                        aria-label="Abrir WhatsApp con {{ contact.name }}">WhatsApp</a>
                 </div>
                 <span class="dog-count">{% if contact.active_dogs|length == 1 %}1 <span>perro activo</span>{% else %}{{ contact.active_dogs|length }} <span>perros activos</span>{% endif %}</span>
                 {% if not contact.is_active %}<span class="contact-status-badge">Inactivo</span>{% endif %}

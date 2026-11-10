@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const deactivateButton = document.getElementById("deactivate-dog-button");
     const activeField = document.querySelector("[data-dog-active-field]");
     const ownersSelect = document.getElementById("id_owners");
+    const ownersFilter = document.getElementById("dog-owners-filter");
+    const ownersFilterCount = document.getElementById("dog-owners-filter-count");
+    const ownersFilterEmpty = document.getElementById("dog-owners-filter-empty");
     const selectedOwners = document.getElementById("dog-selected-owners");
 
     if (!(dogDialog instanceof HTMLDialogElement)) {
@@ -52,6 +55,33 @@ document.addEventListener("DOMContentLoaded", () => {
     ownersSelect.addEventListener("change", renderSelectedOwners);
     renderSelectedOwners();
 
+    const normalize = (value) => value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("es")
+        .trim();
+
+    function filterOwners() {
+        const query = normalize(ownersFilter.value);
+        const options = [...ownersSelect.options];
+        let visibleCount = 0;
+
+        options.forEach((option) => {
+            const matches = normalize(option.textContent).includes(query);
+            option.hidden = !matches;
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        ownersFilterCount.textContent = `${visibleCount} ${visibleCount === 1 ? "cliente" : "clientes"}`;
+        ownersFilterEmpty.hidden = visibleCount > 0;
+    }
+
+    ownersFilter.addEventListener("input", filterOwners);
+    ownersFilter.addEventListener("search", filterOwners);
+    filterOwners();
+
     function setEditMode(isEditing, isActive = true) {
         title.textContent = isEditing ? "Editar ficha" : "Registrar perro";
         saveButton.textContent = isEditing ? "Guardar cambios" : "Registrar perro";
@@ -61,6 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function resetForCreate() {
         dogForm.reset();
+        filterOwners();
         dogIdInput.value = "";
         dogActionInput.value = "";
         document.querySelectorAll("#id_owners option").forEach((option) => {
@@ -78,6 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-edit-dog]").forEach((button) => {
         button.addEventListener("click", () => {
             dogForm.reset();
+            filterOwners();
             dogIdInput.value = button.dataset.editDog;
             dogActionInput.value = "";
             dogForm.elements.namedItem("name").value = button.dataset.name;

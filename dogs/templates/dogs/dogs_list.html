@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load contact_filters %}
 {% block content %}
 <section class="dogs-page" aria-labelledby="dogs-title">
     <header class="contacts-heading">
@@ -108,6 +109,9 @@
                                     </span>
                                 {% endif %}
                                 <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                                <a class="whatsapp-link" href="https://wa.me/{{ contact.phone|whatsapp_phone }}"
+                                    target="_blank" rel="noopener noreferrer"
+                                    aria-label="Abrir WhatsApp con {{ contact.name }}">WhatsApp</a>
                             </span>
                         </li>
                     {% empty %}
@@ -231,9 +235,18 @@
                     </button>
                 </div>
                 <div class="contact-dialog__field">
+                    <label for="dog-owners-filter">Filtrar clientes existentes</label>
+                    <input id="dog-owners-filter" type="search" autocomplete="off"
+                        placeholder="Nombre o teléfono" aria-controls="id_owners">
+                    <output id="dog-owners-filter-count" aria-live="polite"></output>
+                </div>
+                <div class="contact-dialog__field">
                     {{ form.owners.label_tag }}
                     {{ form.owners }}
                     {{ form.owners.errors }}
+                    <p class="dog-dialog__hint" id="dog-owners-filter-empty" hidden>
+                        No hay clientes que coincidan con la búsqueda.
+                    </p>
                 </div>
                 <div class="dog-dialog__selected-owners" id="dog-selected-owners"
                     aria-label="Responsables seleccionados" aria-live="polite"></div>

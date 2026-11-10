@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load contact_filters %}
 {% block content %}
 <section class="record-detail-page" aria-labelledby="dog-detail-title">
     <a class="contact-detail-back" href="{% url 'dogs_list' %}">← Volver a perros</a>
@@ -175,6 +176,9 @@
                         <div>
                             <h3><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h3>
                             <a class="contact-detail-phone" href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                            <a class="whatsapp-link" href="https://wa.me/{{ contact.phone|whatsapp_phone }}"
+                                target="_blank" rel="noopener noreferrer"
+                                aria-label="Abrir WhatsApp con {{ contact.name }}">WhatsApp</a>
                         </div>
                         {% if contact.descartable %}<span class="discardable-badge">No priorizar</span>{% endif %}
                     </div>

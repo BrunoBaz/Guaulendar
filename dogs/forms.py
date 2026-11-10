@@ -38,12 +38,18 @@ class BreedComboboxWidget(forms.TextInput):
         )
 
 
+class ContactChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, contact):
+        return f"{contact.name} - {contact.phone}"
+
+
 class createNewDogForm(forms.Form):
     COAT_CHOICES = [
         ("Corto", "Corto"),
         ("Doble Capa", "Doble Capa"),
         ("Alambre", "Alambre"),
         ("Crecimiento Continuo", "Crecimiento Continuo"),
+        ("Spaniel", "Spaniel"),
     ]
 
     name = forms.CharField(label="Nombre del perro", max_length=50)
@@ -63,7 +69,7 @@ class createNewDogForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 2}),
     )
     is_active = forms.BooleanField(label="Perro activo", required=False, initial=True)
-    owners = forms.ModelMultipleChoiceField(
+    owners = ContactChoiceField(
         label="Clientes existentes",
         queryset=Contacts.objects.filter(is_active=True).order_by("name"),
         required=False,

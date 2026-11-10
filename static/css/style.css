@@ -1918,6 +1918,13 @@ body {
     font-size: 0.76rem;
 }
 
+#dog-owners-filter-count {
+    min-height: 1em;
+    color: #71827d;
+    font-size: 0.74rem;
+    font-weight: 500;
+}
+
 .dog-dialog__add-owner {
     min-height: 36px;
     padding: 6px 10px;
@@ -2294,6 +2301,24 @@ body {
 .contact-detail-phone {
     color: #71827d;
     font-size: 0.8rem;
+}
+
+.whatsapp-link {
+    color: #128c7e;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration-color: rgba(18, 140, 126, 0.4);
+    text-underline-offset: 3px;
+}
+
+.whatsapp-link:hover {
+    color: #0b6d61;
+}
+
+.whatsapp-link:focus-visible {
+    border-radius: 2px;
+    outline: 2px solid rgba(18, 140, 126, 0.45);
+    outline-offset: 3px;
 }
 
 .history-detail-breakdown {

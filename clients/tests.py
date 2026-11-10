@@ -2,12 +2,31 @@ from django.test import TestCase
 from django.urls import reverse
 
 from appointments.models import Appointment
+from clients.templatetags.contact_filters import whatsapp_phone
 from dogs.models import Breed, Dog
 from historial.models import ServiceHistory
 from .models import Contacts
 
 
 class ContactsPageTests(TestCase):
+    def test_whatsapp_phone_adds_spain_prefix_and_removes_formatting(self):
+        self.assertEqual(whatsapp_phone("600 111-222"), "34600111222")
+        self.assertEqual(whatsapp_phone("+34 600 111 222"), "34600111222")
+        self.assertEqual(whatsapp_phone("0034 600 111 222"), "34600111222")
+        self.assertEqual(whatsapp_phone(""), "")
+
+    def test_contact_card_links_to_whatsapp_and_keeps_call_link(self):
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="600 111-222")
+
+        response = self.client.get(reverse("contacts"))
+
+        self.assertContains(response, 'href="tel:600 111-222"')
+        self.assertContains(response, 'href="https://wa.me/34600111222"')
+        self.assertContains(
+            response,
+            'aria-label="Abrir WhatsApp con Ana Ruiz"',
+        )
+
     def test_contact_search_suggests_names_without_restricting_input(self):
         contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
         contact.dogs.add(Dog.objects.create(name="Nube"))
@@ -68,7 +87,7 @@ class ContactsPageTests(TestCase):
         self.assertContains(response, 'data-open-on-load="true"')
 
     def test_contacts_page_shows_active_and_inactive_contacts_by_default(self):
-        breed = Breed.objects.create(name="Caniche")
+        breed, _ = Breed.objects.get_or_create(name="Caniche")
         contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
         contact.dogs.add(
             Dog.objects.create(name="Nube", breed=breed, sex="F", color="Blanco"),

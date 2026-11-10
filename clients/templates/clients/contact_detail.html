@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load contact_filters %}
 {% block content %}
 <section class="contact-detail-page" aria-labelledby="contact-detail-title">
     <a class="contact-detail-back" href="{% url 'contacts' %}">← Volver a contactos</a>
@@ -9,6 +10,9 @@
             <h1 id="contact-detail-title">{{ contact.name }}</h1>
             <div class="contact-detail-meta">
                 <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                <a class="whatsapp-link" href="https://wa.me/{{ contact.phone|whatsapp_phone }}"
+                    target="_blank" rel="noopener noreferrer"
+                    aria-label="Abrir WhatsApp con {{ contact.name }}">WhatsApp</a>
                 <span class="contact-status-badge {% if contact.is_active %}contact-status-badge--active{% endif %}">
                     {% if contact.is_active %}Activo{% else %}Inactivo{% endif %}
                 </span>

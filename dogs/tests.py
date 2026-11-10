@@ -236,6 +236,7 @@ class DogsListPageTests(TestCase):
 			response,
 			'<a class="contact-detail-phone" href="tel:555-0199">555-0199</a>',
 		)
+		self.assertContains(response, 'href="https://wa.me/345550199"')
 
 	def test_dog_cards_mark_discardable_owners(self):
 		dog = Dog.objects.create(name="Milo")
@@ -265,7 +266,12 @@ class DogsListPageTests(TestCase):
 		self.assertContains(response, 'id="open-dog-dialog"')
 		self.assertContains(response, '<dialog class="contact-dialog" id="dog-dialog"')
 		self.assertContains(response, 'data-breed-value="Caniche"')
-		self.assertContains(response, f'<option value="{owner.pk}">Ana Ruiz</option>')
+		self.assertContains(
+			response,
+			f'<option value="{owner.pk}">Ana Ruiz - 555-0101</option>',
+		)
+		self.assertContains(response, 'id="dog-owners-filter"')
+		self.assertContains(response, 'placeholder="Nombre o teléfono"')
 		self.assertEqual(
 			set(response.context["form"].fields),
 			{
