@@ -119,7 +119,7 @@
                 <button class="contact-dialog__button contact-dialog__button--secondary"
                     type="button" data-edit-dog="{{ dog.pk }}"
                     data-name="{{ dog.name }}"
-                    data-breed="{{ dog.breed_id|default_if_none:'' }}"
+                    data-breed-name="{{ dog.breed.name }}"
                     data-color="{{ dog.color }}"
                     data-sex="{{ dog.sex }}"
                     data-coat-type="{{ dog.coat_type }}"
@@ -271,6 +271,7 @@
 {% include "includes/status_confirmation_dialog.html" %}
 
 <script src="{% static 'js/directory-filter.js' %}" defer></script>
+<script src="{% static 'js/breed-combobox.js' %}" defer></script>
 <script src="{% static 'js/dog-registration-dialog.js' %}" defer></script>
 <script src="{% static 'js/contacts-dialog.js' %}" defer></script>
 <script src="{% static 'js/status-confirmation-dialog.js' %}" defer></script>

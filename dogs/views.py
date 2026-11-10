@@ -9,7 +9,7 @@ from clients.models import Contacts
 from historial.models import ServiceHistory
 
 from .forms import createNewDogForm
-from .models import Dog
+from .models import Breed, Dog
 
 
 def dogs_list(request):
@@ -52,7 +52,7 @@ def dogs_list(request):
             with transaction.atomic():
                 dog = edit_dog or Dog()
                 dog.name = form.cleaned_data["name"]
-                dog.breed = form.cleaned_data["breed"]
+                dog.breed = Breed.get_or_create_by_name(form.cleaned_data["breed"])
                 dog.color = form.cleaned_data["color"]
                 dog.sex = form.cleaned_data["sex"]
                 dog.coat_type = form.cleaned_data["coat_type"]
@@ -131,7 +131,7 @@ def dog_detail(request, dog_id):
             else:
                 with transaction.atomic():
                     dog.name = dog_form.cleaned_data["name"]
-                    dog.breed = dog_form.cleaned_data["breed"]
+                    dog.breed = Breed.get_or_create_by_name(dog_form.cleaned_data["breed"])
                     dog.color = dog_form.cleaned_data["color"]
                     dog.sex = dog_form.cleaned_data["sex"]
                     dog.coat_type = dog_form.cleaned_data["coat_type"]

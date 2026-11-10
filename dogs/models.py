@@ -12,6 +12,13 @@ class Breed(models.Model):
 	def __str__(self):
 		return self.name
 
+	@classmethod
+	def get_or_create_by_name(cls, name):
+		name = (name or "").strip()
+		if not name:
+			return None
+		return cls.objects.filter(name__iexact=name).first() or cls.objects.create(name=name)
+
 
 class Dog(models.Model):
 	SEX_CHOICES = [("M", "Macho"), ("F", "Hembra")]

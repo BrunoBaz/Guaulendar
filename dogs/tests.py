@@ -9,7 +9,7 @@ from historial.models import ServiceHistory
 
 class DogsListPageTests(TestCase):
 	def test_dog_search_suggests_names_without_restricting_input(self):
-		breed = Breed.objects.create(name="Golden Retriever")
+		breed, _ = Breed.objects.get_or_create(name="Golden Retriever")
 		dog = Dog.objects.create(name="Milo", breed=breed)
 		contact = Contacts.objects.create(name="Lucía Pérez", phone="555-0104")
 		contact.dogs.add(dog)
@@ -24,7 +24,7 @@ class DogsListPageTests(TestCase):
 		self.assertContains(response, '<option value="Lucía Pérez">')
 
 	def test_dog_cards_show_details_and_owners(self):
-		breed = Breed.objects.create(name="Golden Retriever")
+		breed, _ = Breed.objects.get_or_create(name="Golden Retriever")
 		dog = Dog.objects.create(
 			name="Milo",
 			breed=breed,
@@ -57,7 +57,7 @@ class DogsListPageTests(TestCase):
 		)
 
 	def test_dog_detail_shows_only_its_related_data(self):
-		breed = Breed.objects.create(name="Caniche")
+		breed, _ = Breed.objects.get_or_create(name="Caniche")
 		dog = Dog.objects.create(name="Nube", breed=breed, color="Blanco")
 		other_dog = Dog.objects.create(name="Toby")
 		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
@@ -257,14 +257,14 @@ class DogsListPageTests(TestCase):
 		self.assertContains(response, "Aún no hay perros registrados")
 
 	def test_registration_dialog_renders_dog_and_owner_fields(self):
-		breed = Breed.objects.create(name="Caniche")
+		breed, _ = Breed.objects.get_or_create(name="Caniche")
 		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
 
 		response = self.client.get(reverse("dogs_list"))
 
 		self.assertContains(response, 'id="open-dog-dialog"')
 		self.assertContains(response, '<dialog class="contact-dialog" id="dog-dialog"')
-		self.assertContains(response, f'<option value="{breed.pk}">Caniche</option>')
+		self.assertContains(response, 'data-breed-value="Caniche"')
 		self.assertContains(response, f'<option value="{owner.pk}">Ana Ruiz</option>')
 		self.assertEqual(
 			set(response.context["form"].fields),
@@ -304,13 +304,13 @@ class DogsListPageTests(TestCase):
 		self.assertContains(response, f'data-dog-owner-id="{owner.pk}"')
 
 	def test_dog_registration_post_creates_dog_and_redirects(self):
-		breed = Breed.objects.create(name="Caniche")
+		breed, _ = Breed.objects.get_or_create(name="Caniche")
 
 		response = self.client.post(
 			reverse("dogs_list"),
 			{
 				"name": "Nube",
-				"breed": str(breed.pk),
+				"breed": "Caniche",
 				"color": "Blanco",
 				"sex": "F",
 				"coat_type": "Corto",
@@ -325,6 +325,33 @@ class DogsListPageTests(TestCase):
 		self.assertEqual(dog.coat_type, "Corto")
 		self.assertFalse(dog.is_active)
 		self.assertFalse(dog.owners.exists())
+
+	def test_dog_registration_creates_unknown_breed(self):
+		response = self.client.post(
+			reverse("dogs_list"),
+			{
+				"name": "Nube",
+				"breed": "Raza Inventada",
+			},
+		)
+
+		self.assertRedirects(response, reverse("dogs_list"))
+		dog = Dog.objects.get(name="Nube")
+		self.assertEqual(dog.breed.name, "Raza Inventada")
+
+	def test_dog_registration_reuses_existing_breed_ignoring_case(self):
+		breed, _ = Breed.objects.get_or_create(name="Caniche")
+
+		self.client.post(
+			reverse("dogs_list"),
+			{
+				"name": "Nube",
+				"breed": "caniche",
+			},
+		)
+
+		self.assertEqual(Breed.objects.filter(name__iexact="caniche").count(), 1)
+		self.assertEqual(Dog.objects.get(name="Nube").breed, breed)
 
 	def test_dog_registration_post_associates_existing_owners(self):
 		first_owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
