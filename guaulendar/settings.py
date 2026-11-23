@@ -255,10 +255,11 @@ VERIFACTU_FAKE_API = DEBUG and env_bool("VERIFACTU_FAKE_API")
 
 
 def smtp_mailer():
-    """Servidor de correo saliente; sin EMAIL_HOST, escribe en la consola.
+    """Servidor de correo saliente por SMTP; sin EMAIL_HOST, escribe en la consola.
 
-    La consola vale en local, pero en producción el correo tiene que salir por
-    SMTP: es lo que ofrecen Resend, SendGrid, el propio servidor de correo, etc.
+    Vale para un servidor de correo propio o un servidor donde sí se pueda abrir
+    el puerto. En Vercel no es una opción: su runtime de Python no permite el
+    socket, así que allí el correo sale por Brevo (ver `mailer`).
     """
     host = os.environ.get("EMAIL_HOST", "")
     if not host:
@@ -276,7 +277,19 @@ def smtp_mailer():
     }
 
 
-MAILERS = {"default": smtp_mailer()}
+def mailer():
+    """Backend de correo de la aplicación: Brevo, SMTP o consola, por ese orden.
+
+    Con BREVO_API_KEY se envía por la API HTTP, que es la única vía que funciona
+    desde Vercel; sin ninguna credencial el correo se escribe en la consola.
+    """
+    if os.environ.get("BREVO_API_KEY"):
+        return {"BACKEND": "guaulendar.mailers.BrevoEmailBackend"}
+
+    return smtp_mailer()
+
+
+MAILERS = {"default": mailer()}
 
 # Remitente de los correos de la aplicación (recuperación de contraseña).
 DEFAULT_FROM_EMAIL = os.environ.get(
