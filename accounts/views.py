@@ -1,9 +1,9 @@
 from urllib.parse import urlsplit
 
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, views as auth_views
 from django.shortcuts import redirect, render
-from django.urls import Resolver404, reverse
+from django.urls import Resolver404, reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.defaults import page_not_found as default_page_not_found
 
@@ -28,6 +28,17 @@ def register(request):
         return redirect(HOME_URL_NAME)
 
     return render(request, "accounts/register.html", {"form": form})
+
+
+class PasswordChangeView(auth_views.PasswordChangeView):
+    """Cambio de contraseña de la cuenta que tiene la sesión abierta."""
+
+    template_name = "accounts/password_change.html"
+    success_url = reverse_lazy(HOME_URL_NAME)
+
+    def form_valid(self, form):
+        messages.success(self.request, "Contraseña actualizada.")
+        return super().form_valid(form)
 
 
 def offline(request):

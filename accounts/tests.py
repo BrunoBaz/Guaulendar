@@ -173,6 +173,57 @@ class LoginViewTests(TestCase):
         self.assertEqual(self.client.get(reverse("appointments")).status_code, 200)
 
 
+class PasswordChangeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="cambia@peluqueria.test",
+            password="ClaveAntigua-2026",
+        )
+        emisor = Emisor.objects.create(name="Peluquería Cambios", nif="B33333333")
+        EmisorMember.objects.create(emisor=emisor, user=self.user, role="OWNER")
+
+    def test_password_change_requires_logging_in(self):
+        response = self.client.get(reverse("password_change"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith(reverse("login")))
+
+    def test_password_change_updates_the_password_and_keeps_the_session(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("password_change"),
+            {
+                "old_password": "ClaveAntigua-2026",
+                "new_password1": "ClaveNueva-2026",
+                "new_password2": "ClaveNueva-2026",
+            },
+        )
+
+        self.assertRedirects(response, reverse("appointments"))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("ClaveNueva-2026"))
+        # La sesión se renueva, así que sigue abierta después del cambio.
+        self.assertEqual(self.client.get(reverse("appointments")).status_code, 200)
+
+    def test_password_change_rejects_a_wrong_current_password(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("password_change"),
+            {
+                "old_password": "NoEsLaBuena-2026",
+                "new_password1": "ClaveNueva-2026",
+                "new_password2": "ClaveNueva-2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].has_error("old_password"))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("ClaveAntigua-2026"))
+
+
 class EmisorIsolationTests(TestCase):
     def setUp(self):
         self.emisor_a = Emisor.objects.create(name="Peluquería A", nif="B11111111")

@@ -25,6 +25,11 @@ urlpatterns = [
         name="logout",
     ),
     path(
+        "accounts/password/",
+        views.PasswordChangeView.as_view(),
+        name="password_change",
+    ),
+    path(
         "offline/",
         views.offline,
         name="offline",

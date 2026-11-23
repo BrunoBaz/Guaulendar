@@ -26,6 +26,7 @@
                 {% if user.is_authenticated %}
                     <li class="header__session">
                         <span class="header__user">{{ user.get_username }}</span>
+                        <a href="{% url 'password_change' %}">Contraseña</a>
                         <form method="post" action="{% url 'logout' %}">
                             {% csrf_token %}
                             <button class="header__logout" type="submit">Salir</button>
