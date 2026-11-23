@@ -13,8 +13,13 @@
         <meta name="theme-color" content="#078568">
     </head>
     <body>
-        <nav>
-            <ul class="header">
+        <nav class="nav">
+            <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="main-menu" aria-label="Abrir menú">
+                <span class="nav__toggle-bar"></span>
+                <span class="nav__toggle-bar"></span>
+                <span class="nav__toggle-bar"></span>
+            </button>
+            <ul class="header" id="main-menu">
                 {% with current_url=request.resolver_match.url_name %}
                     {% if user.is_authenticated %}
                         <li><a href="{% url 'appointments' %}" class="{% if current_url == 'appointments' %}is-active{% endif %}" {% if current_url == 'appointments' %}aria-current="page"{% endif %}>Citas</a></li>
@@ -26,7 +31,6 @@
                 {% if user.is_authenticated %}
                     <li class="header__session">
                         <span class="header__user">{{ user.get_username }}</span>
-                        <a href="{% url 'password_change' %}">Contraseña</a>
                         <form method="post" action="{% url 'logout' %}">
                             {% csrf_token %}
                             <button class="header__logout" type="submit">Salir</button>
@@ -50,5 +54,14 @@
         </main>
         {% django_browser_reload_script %}
         <script src="{% static 'js/pwa.js' %}" defer></script>
+        <script>
+            // El botón de tres rayas solo se ve en móvil; el CSS muestra el menú
+            // según aria-expanded, así que aquí basta con alternarlo.
+            const navToggle = document.querySelector(".nav__toggle");
+            navToggle.addEventListener("click", () => {
+                const abierto = navToggle.getAttribute("aria-expanded") === "true";
+                navToggle.setAttribute("aria-expanded", abierto ? "false" : "true");
+            });
+        </script>
     </body>
 </html>
