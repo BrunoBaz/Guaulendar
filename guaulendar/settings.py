@@ -50,7 +50,7 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 if DEBUG and not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ["192.168.1.129", "127.0.0.1", "localhost"]
+    ALLOWED_HOSTS = ["192.168.0.14", "127.0.0.1", "localhost"]
 
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 if RENDER_EXTERNAL_HOSTNAME:
@@ -118,7 +118,16 @@ WSGI_APPLICATION = 'guaulendar.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL:
+RUNNING_ON_RENDER = (
+    env_bool("RENDER", default=False)
+    or bool(os.environ.get("RENDER_EXTERNAL_HOSTNAME"))
+)
+USE_DATABASE_URL = env_bool(
+    "DJANGO_USE_DATABASE_URL",
+    default=RUNNING_ON_RENDER,
+)
+
+if DATABASE_URL and USE_DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
