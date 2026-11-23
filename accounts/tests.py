@@ -1,6 +1,10 @@
+import re
+from urllib.parse import urlsplit
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -222,6 +226,77 @@ class PasswordChangeTests(TestCase):
         self.assertTrue(response.context["form"].has_error("old_password"))
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("ClaveAntigua-2026"))
+
+
+class PasswordResetTests(TestCase):
+    EMAIL = "olvidadiza@peluqueria.test"
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username=self.EMAIL,
+            email=self.EMAIL,
+            password="ClaveAntigua-2026",
+        )
+
+    def request_reset_link(self):
+        """Pide el enlace de recuperación y devuelve la dirección del correo."""
+        response = self.client.post(reverse("password_reset"), {"email": self.EMAIL})
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.EMAIL])
+        found = re.search(
+            r"https?://\S+/accounts/password-reset/\S+", mail.outbox[0].body
+        )
+        self.assertIsNotNone(found)
+        return urlsplit(found.group(0)).path
+
+    def test_the_login_screen_offers_the_forgotten_password_link(self):
+        response = self.client.get(reverse("login"))
+
+        self.assertContains(response, reverse("password_reset"))
+
+    def test_the_form_asks_for_the_email(self):
+        response = self.client.get(reverse("password_reset"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["form"].fields), ["email"])
+
+    def test_an_unknown_email_gets_the_same_answer_without_sending_anything(self):
+        response = self.client.post(
+            reverse("password_reset"), {"email": "nadie@peluqueria.test"}
+        )
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_the_link_of_the_email_lets_the_user_choose_a_new_password(self):
+        path = self.request_reset_link()
+
+        response = self.client.get(path, follow=True)
+        self.assertTrue(response.context["validlink"])
+
+        response = self.client.post(
+            response.request["PATH_INFO"],
+            {"new_password1": "ClaveNueva-2026", "new_password2": "ClaveNueva-2026"},
+        )
+
+        self.assertRedirects(response, reverse("password_reset_complete"))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("ClaveNueva-2026"))
+
+    def test_the_link_can_only_be_used_once(self):
+        path = self.request_reset_link()
+        response = self.client.get(path, follow=True)
+        self.client.post(
+            response.request["PATH_INFO"],
+            {"new_password1": "ClaveNueva-2026", "new_password2": "ClaveNueva-2026"},
+        )
+
+        response = self.client.get(path, follow=True)
+
+        self.assertFalse(response.context["validlink"])
+        self.assertContains(response, "El enlace ya no es válido")
 
 
 class EmisorIsolationTests(TestCase):

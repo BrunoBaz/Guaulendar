@@ -253,8 +253,32 @@ VERIFACTU_FAKE_API = DEBUG and env_bool("VERIFACTU_FAKE_API")
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+
+def smtp_mailer():
+    """Servidor de correo saliente; sin EMAIL_HOST, escribe en la consola.
+
+    La consola vale en local, pero en producción el correo tiene que salir por
+    SMTP: es lo que ofrecen Resend, SendGrid, el propio servidor de correo, etc.
+    """
+    host = os.environ.get("EMAIL_HOST", "")
+    if not host:
+        return {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
+
+    return {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": host,
+            "port": int(os.environ.get("EMAIL_PORT", "587")),
+            "username": os.environ.get("EMAIL_HOST_USER", ""),
+            "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
+            "use_tls": env_bool("EMAIL_USE_TLS", default=True),
+        },
+    }
+
+
+MAILERS = {"default": smtp_mailer()}
+
+# Remitente de los correos de la aplicación (recuperación de contraseña).
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", "Guaulendar <no-reply@localhost>"
+)
