@@ -24,8 +24,12 @@ from clients.views import contact_detail, contacts
 from dogs.views import dog_detail, dogs_list
 from historial.views import service_history, service_history_detail
 
+from .views import service_worker
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Se sirve desde la raíz para que su alcance cubra toda la aplicación.
+    path('sw.js', service_worker, name='service_worker'),
     path(
         'favicon.ico',
         RedirectView.as_view(

@@ -1,7 +1,11 @@
 {
+  "id": "/",
   "name": "Guaulendar",
   "short_name": "Guaulendar",
+  "description": "Gestión de peluquería canina: citas, contactos, perros e histórico.",
+  "lang": "es",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#078568",
   "theme_color": "#078568",

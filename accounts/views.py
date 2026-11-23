@@ -30,6 +30,11 @@ def register(request):
     return render(request, "accounts/register.html", {"form": form})
 
 
+def offline(request):
+    """Aviso que muestra el service worker cuando no hay conexión."""
+    return render(request, "accounts/offline.html")
+
+
 def page_not_found(request, exception):
     """404 de una dirección que no existe: se avisa y se vuelve a una pantalla válida.
 

@@ -9,6 +9,7 @@
         <link rel="icon" href="{% static 'images/guaulendar-favicon.ico' %}" sizes="any">
         <link rel="icon" type="image/png" href="{% static 'images/guaulendar-favicon-48.png' %}" sizes="48x48">
         <link rel="manifest" href="{% static 'manifest.json' %}">
+        <link rel="apple-touch-icon" href="{% static 'images/guaulendar-android-icon-192.png' %}">
         <meta name="theme-color" content="#078568">
     </head>
     <body>
@@ -47,5 +48,6 @@
             {% block content %}{% endblock %}
         </main>
         {% django_browser_reload_script %}
+        <script src="{% static 'js/pwa.js' %}" defer></script>
     </body>
 </html>

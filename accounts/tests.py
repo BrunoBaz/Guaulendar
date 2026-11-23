@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.test import TestCase, override_settings
@@ -252,3 +253,22 @@ class UnknownAddressTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], reverse("appointments"))
+
+
+class OfflinePageTests(TestCase):
+    def test_offline_page_is_reachable_without_logging_in(self):
+        response = self.client.get(reverse("offline"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sin conexión")
+
+
+class ServiceWorkerTests(TestCase):
+    def test_service_worker_is_served_from_the_root_with_the_asset_version(self):
+        response = self.client.get(reverse("service_worker"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/javascript")
+        self.assertEqual(response["Cache-Control"], "no-cache")
+        self.assertEqual(reverse("service_worker"), "/sw.js")
+        self.assertContains(response, f'const VERSION = "{settings.ASSET_VERSION}";')

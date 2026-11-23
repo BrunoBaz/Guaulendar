@@ -24,4 +24,9 @@ urlpatterns = [
         auth_views.LogoutView.as_view(),
         name="logout",
     ),
+    path(
+        "offline/",
+        views.offline,
+        name="offline",
+    ),
 ]

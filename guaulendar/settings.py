@@ -219,6 +219,14 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# Versión de los recursos: al cambiar, el service worker invalida su caché.
+# Render y Vercel publican el commit del despliegue en estas variables.
+ASSET_VERSION = (
+    os.environ.get("RENDER_GIT_COMMIT")
+    or os.environ.get("VERCEL_GIT_COMMIT_SHA")
+    or "dev"
+)[:12]
+
 
 # VeriFactu: API REST gratuita de Irene Solutions (https://facturae.irenesolutions.com/verifactu/go)
 # El usuario y la contraseña de cada emisor se guardan cifrados en la base de datos
