@@ -15,7 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.templatetags.static import static
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 from appointments.views import appointments
 from clients.views import contact_detail, contacts
@@ -24,6 +26,20 @@ from historial.views import service_history, service_history_detail
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path(
+        'favicon.ico',
+        RedirectView.as_view(
+            url=static('images/guaulendar-favicon.ico'),
+            permanent=True,
+        ),
+    ),
+    path(
+        'favicon.png',
+        RedirectView.as_view(
+            url=static('images/guaulendar-favicon-48.png'),
+            permanent=True,
+        ),
+    ),
     path('contacts/', contacts, name='contacts'),
     path('contacts/<int:contact_id>/', contact_detail, name='contact_detail'),
     path('dogs/', dogs_list, name='dogs_list'),

@@ -135,7 +135,12 @@ RUNNING_ON_RENDER = (
     env_bool("RENDER", default=False)
     or bool(os.environ.get("RENDER_EXTERNAL_HOSTNAME"))
 )
-USE_DATABASE_URL = env_bool(
+RUNNING_ON_VERCEL = (
+    env_bool("VERCEL", default=False)
+    or bool(VERCEL_URL)
+    or bool(VERCEL_PROJECT_PRODUCTION_URL)
+)
+USE_DATABASE_URL = RUNNING_ON_VERCEL or env_bool(
     "DJANGO_USE_DATABASE_URL",
     default=RUNNING_ON_RENDER,
 )
@@ -149,6 +154,10 @@ if DATABASE_URL and USE_DATABASE_URL:
             ssl_require=True,
         )
     }
+elif not DEBUG or RUNNING_ON_RENDER or RUNNING_ON_VERCEL:
+    raise RuntimeError(
+        "DATABASE_URL debe estar configurada y habilitada en producción."
+    )
 else:
     DATABASES = {
         "default": {
