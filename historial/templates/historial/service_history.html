@@ -45,7 +45,7 @@
                     <span class="history-mark" aria-hidden="true">{{ service.dog_snapshot.name|default:service.dog.name|first|upper }}</span>
                     <div class="history-card__identity">
                         <p class="contact-kicker">{{ service.date|date:"d/m/Y · H:i" }}</p>
-                        <h2><a href="{% url 'service_history_detail' service.pk %}">{{ service.dog_snapshot.name|default:service.dog.name }}</a></h2>
+                        <h2><a href="{% url 'service_history_detail' service.public_id %}">{{ service.dog_snapshot.name|default:service.dog.name }}</a></h2>
                         <p>{{ service.get_service_type_display }}</p>
                     </div>
                     {% if service.status == "COMPLETED" %}

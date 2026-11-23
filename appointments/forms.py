@@ -83,11 +83,13 @@ class AppointmentForm(forms.ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, emisor=None, **kwargs):
         super().__init__(*args, **kwargs)
+        dogs = Dog.objects.filter(is_active=True)
+        if emisor is not None:
+            dogs = dogs.filter(emisor=emisor)
         self.fields["dog"].queryset = (
-            Dog.objects.filter(is_active=True)
-            .prefetch_related(
+            dogs.prefetch_related(
                 Prefetch(
                     "owners",
                     queryset=Contacts.objects.filter(is_active=True).order_by("name"),

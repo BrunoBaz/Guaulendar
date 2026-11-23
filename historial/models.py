@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.db import models
@@ -11,6 +12,14 @@ from appointments.choices import (
 
 
 class ServiceHistory(models.Model):
+	emisor = models.ForeignKey(
+		"invoicing.Emisor",
+		on_delete=models.CASCADE,
+		related_name="service_history",
+		null=True,
+	)
+	# Identificador opaco que se usa en las URLs: no revela el orden global de altas.
+	public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 	dog = models.ForeignKey(
 		"dogs.Dog",
 		on_delete=models.PROTECT,

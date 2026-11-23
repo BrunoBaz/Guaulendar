@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="auth-page" aria-labelledby="login-title">
+    <header class="auth-heading">
+        <p class="auth-eyebrow">GUAULENDAR / ACCESO</p>
+        <h1 id="login-title">Entra <span>en tu peluquería</span></h1>
+        <p class="auth-intro">Tu agenda, tus clientes y tu facturación, solo para tu negocio.</p>
+    </header>
+
+    <form method="post" class="auth-form" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% if form.non_field_errors %}
+            <ul class="auth-form__errors">
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        {% for field in form %}
+            <div class="auth-form__field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<p class="auth-form__error">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+        {% endfor %}
+        <button class="auth-form__submit" type="submit">Entrar</button>
+    </form>
+
+    <p class="auth-alt">
+        ¿Todavía no tienes cuenta?
+        <a href="{% url 'register' %}">Da de alta tu peluquería</a>
+    </p>
+</section>
+{% endblock %}

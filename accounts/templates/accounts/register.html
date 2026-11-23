@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="auth-page" aria-labelledby="register-title">
+    <header class="auth-heading">
+        <p class="auth-eyebrow">GUAULENDAR / ALTA DE NEGOCIO</p>
+        <h1 id="register-title">Crea <span>tu peluquería</span></h1>
+        <p class="auth-intro">
+            La cuenta de acceso y los datos fiscales del negocio se dan de alta de una vez:
+            los mismos que identificarán tus facturas ante la AEAT.
+        </p>
+    </header>
+
+    <form method="post" class="auth-form" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <ul class="auth-form__errors">
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        {% for field in form %}
+            <div class="auth-form__field{% if field.name == 'business_name' %} auth-form__field--company{% endif %}{% if field.name == 'first_name' or field.name == 'last_name' %} auth-form__field--individual{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<p class="auth-form__error">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+        {% endfor %}
+        <button class="auth-form__submit" type="submit">Crear cuenta</button>
+    </form>
+
+    <p class="auth-alt">
+        ¿Ya tienes cuenta?
+        <a href="{% url 'login' %}">Inicia sesión</a>
+    </p>
+
+    <script>
+        // Cada tipo de persona pide sus datos: razón social o nombre y apellidos.
+        (function () {
+            var select = document.getElementById("{{ form.taxpayer_type.id_for_label }}");
+            if (!select) { return; }
+            var company = document.querySelectorAll(".auth-form__field--company");
+            var individual = document.querySelectorAll(".auth-form__field--individual");
+            function update() {
+                var isIndividual = select.value === "INDIVIDUAL";
+                company.forEach(function (field) { field.style.display = isIndividual ? "none" : ""; });
+                individual.forEach(function (field) { field.style.display = isIndividual ? "" : "none"; });
+            }
+            select.addEventListener("change", update);
+            update();
+        })();
+    </script>
+</section>
+{% endblock %}

@@ -101,7 +101,7 @@
                 <article class="contact-detail-record">
                     <div>
                         <p class="contact-kicker">{{ service.date|date:"d/m/Y · H:i" }}</p>
-                        <h3><a href="{% url 'service_history_detail' service.pk %}">{{ service.get_service_type_display }} · {{ service.dog.name }}</a></h3>
+                        <h3><a href="{% url 'service_history_detail' service.public_id %}">{{ service.get_service_type_display }} · {{ service.dog.name }}</a></h3>
                         {% if service.notes %}<p class="contact-detail-record__notes">{{ service.notes }}</p>{% endif %}
                     </div>
                     <div class="contact-detail-record__aside">

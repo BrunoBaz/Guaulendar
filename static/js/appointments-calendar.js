@@ -208,6 +208,53 @@ document.addEventListener("DOMContentLoaded", () => {
             .trim();
     }
 
+    function matchesAppointmentFilter(event, query) {
+        const props = event.extendedProps;
+        const owners = props.owners.map((owner) => owner.name).join(" ");
+        const searchableText = normalize(
+            `${props.service} ${props.dog} ${owners} ${props.statusLabel}`,
+        );
+        return searchableText.includes(query);
+    }
+
+    function updateCalendarAppointmentCounts(calendar) {
+        if (calendar.view.type !== "dayGridMonth") {
+            return;
+        }
+
+        const query = normalize(filterInput?.value || "");
+        const countsByDate = new Map();
+        calendar.getEvents().forEach((event) => {
+            if (!matchesAppointmentFilter(event, query)) {
+                return;
+            }
+
+            const date = event.extendedProps.dateInput.slice(0, 10);
+            countsByDate.set(date, (countsByDate.get(date) || 0) + 1);
+        });
+
+        calendarElement.querySelectorAll(".fc-daygrid-day").forEach((dayCell) => {
+            const frame = dayCell.querySelector(".fc-daygrid-day-frame");
+            if (!frame) {
+                return;
+            }
+
+            const count = countsByDate.get(dayCell.dataset.date) || 0;
+            let countLabel = frame.querySelector(".calendar-day-appointment-count");
+            if (count === 0) {
+                countLabel?.remove();
+                return;
+            }
+
+            if (!countLabel) {
+                countLabel = document.createElement("span");
+                countLabel.className = "calendar-day-appointment-count";
+                frame.append(countLabel);
+            }
+            countLabel.textContent = `${count} ${count === 1 ? "cita" : "citas"}`;
+        });
+    }
+
     function updateAppointmentFilter(calendar) {
         if (!filterInput || !filterCount) {
             return;
@@ -216,12 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const query = normalize(filterInput.value);
         let visibleCount = 0;
         calendar.getEvents().forEach((event) => {
-            const props = event.extendedProps;
-            const owners = props.owners.map((owner) => owner.name).join(" ");
-            const searchableText = normalize(
-                `${props.service} ${props.dog} ${owners} ${props.statusLabel}`,
-            );
-            const matches = searchableText.includes(query);
+            const matches = matchesAppointmentFilter(event, query);
             event.setProp("display", matches ? "auto" : "none");
             if (matches) {
                 visibleCount += 1;
@@ -229,6 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         filterCount.textContent = `${visibleCount} ${visibleCount === 1 ? "cita" : "citas"}`;
+        updateCalendarAppointmentCounts(calendar);
     }
 
     if (filterInput && filterOptions) {
@@ -425,9 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const gross = Number(priceInput.value || 0);
         const taxRate = Number(createDialog.dataset.taxRate || 21);
         const grossCents = Math.round(gross * 100);
-        const baseCents = Math.round(grossCents / (1 + taxRate / 100));
-        const taxCents = grossCents - baseCents;
-        let remainingCents = baseCents;
+        let remainingCents = grossCents;
         let errorMessage = "";
 
         for (const discount of currentDiscounts()) {
@@ -444,19 +485,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? Math.round(remainingCents * value / 100)
                 : Math.round(value * 100);
             if (amountCents > remainingCents) {
-                errorMessage = "Los descuentos no pueden superar la base imponible restante.";
+                errorMessage = "Los descuentos no pueden superar el total restante.";
                 break;
             }
             remainingCents -= amountCents;
         }
 
-        const discountCents = baseCents - remainingCents;
+        const discountCents = grossCents - remainingCents;
+        const baseCents = Math.round(remainingCents / (1 + taxRate / 100));
+        const taxCents = remainingCents - baseCents;
         document.getElementById("completion-gross").textContent = formatCurrency(grossCents);
         document.getElementById("completion-base").textContent = formatCurrency(baseCents);
         document.getElementById("completion-tax").textContent = formatCurrency(taxCents);
         document.getElementById("completion-discount").textContent = `−${formatCurrency(discountCents)}`;
-        document.getElementById("completion-total").textContent =
-            formatCurrency(remainingCents + taxCents);
+        document.getElementById("completion-total").textContent = formatCurrency(remainingCents);
         const error = document.getElementById("completion-pricing-error");
         error.textContent = errorMessage;
         error.hidden = !errorMessage;
@@ -565,7 +607,14 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         dayMaxEvents: true,
         noEventsContent: "No hay citas para este periodo.",
+        datesSet() {
+            updateCalendarAppointmentCounts(calendar);
+        },
         dateClick(argument) {
+            if (argument.view.type === "dayGridMonth") {
+                calendar.changeView("timeGridDay", argument.date);
+                return;
+            }
             if (argument.allDay) {
                 return;
             }

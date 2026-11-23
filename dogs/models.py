@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 
 
@@ -23,6 +25,14 @@ class Breed(models.Model):
 class Dog(models.Model):
 	SEX_CHOICES = [("M", "Macho"), ("F", "Hembra")]
 
+	emisor = models.ForeignKey(
+		"invoicing.Emisor",
+		on_delete=models.CASCADE,
+		related_name="dogs",
+		null=True,
+	)
+	# Identificador opaco que se usa en las URLs: no revela el orden global de altas.
+	public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 	name = models.CharField(max_length=50)
 	breed = models.ForeignKey(
 		Breed,

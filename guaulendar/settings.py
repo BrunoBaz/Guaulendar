@@ -90,6 +90,8 @@ INSTALLED_APPS = [
     "dogs",
     "appointments",
     "historial",
+    "invoicing",
+    "accounts",
     'django_browser_reload',
 
 ]
@@ -104,6 +106,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_browser_reload.middleware.BrowserReloadMiddleware',
+    # En depuración Django omite el handler404: este middleware lo replica.
+    'accounts.middleware.NotFoundRedirectMiddleware',
 
 ]
 
@@ -190,12 +194,18 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
 LANGUAGE_CODE = 'es-es'
-
 TIME_ZONE = 'Europe/Madrid'
 
 USE_I18N = True
 
 USE_TZ = True
+
+
+# Autenticación: cada negocio entra con su cuenta y solo ve sus propios datos.
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "appointments"
+LOGOUT_REDIRECT_URL = "login"
 
 
 # Static files (CSS, JavaScript, Images)
@@ -208,6 +218,28 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+
+
+# VeriFactu: API REST gratuita de Irene Solutions (https://facturae.irenesolutions.com/verifactu/go)
+# El usuario y la contraseña de cada emisor se guardan cifrados en la base de datos
+# con SECRET_KEY (ver invoicing.models.EncryptedTextField), no en el entorno.
+
+VERIFACTU_BASE_URL = os.environ.get(
+    "VERIFACTU_BASE_URL",
+    "https://facturae.irenesolutions.com:8050/Kivu",
+)
+VERIFACTU_TIMEOUT = float(os.environ.get("VERIFACTU_TIMEOUT", "30"))
+# La sesión caduca: se renueva con este margen de segundos y, si la API no dice
+# cuándo expira, se asume esta duración.
+VERIFACTU_SESSION_MARGIN = int(os.environ.get("VERIFACTU_SESSION_MARGIN", "300"))
+VERIFACTU_SESSION_LIFETIME = int(os.environ.get("VERIFACTU_SESSION_LIFETIME", "3600"))
+# Datos del emisor por defecto: si no hay ninguno dado de alta, se crea con estos.
+VERIFACTU_EMISOR_NAME = os.environ.get("VERIFACTU_EMISOR_NAME", "")
+VERIFACTU_EMISOR_NIF = os.environ.get("VERIFACTU_EMISOR_NIF", "")
+VERIFACTU_SERIES_PREFIX = os.environ.get("VERIFACTU_SERIES_PREFIX", "FAC")
+VERIFACTU_EMAIL = os.environ.get("VERIFACTU_EMAIL", "")
+# Sustituye la API real por una simulada para probar el flujo en local. Nunca en producción.
+VERIFACTU_FAKE_API = DEBUG and env_bool("VERIFACTU_FAKE_API")
 
 
 # Email

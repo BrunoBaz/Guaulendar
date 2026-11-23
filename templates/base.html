@@ -15,14 +15,35 @@
         <nav>
             <ul class="header">
                 {% with current_url=request.resolver_match.url_name %}
-                    <li><a href="{% url 'appointments' %}" class="{% if current_url == 'appointments' %}is-active{% endif %}" {% if current_url == 'appointments' %}aria-current="page"{% endif %}>Citas</a></li>
-                    <li><a href="{% url 'contacts' %}" class="{% if current_url == 'contacts' %}is-active{% endif %}" {% if current_url == 'contacts' %}aria-current="page"{% endif %}>Contactos</a></li>
-                    <li><a href="{% url 'dogs_list' %}" class="{% if current_url == 'dogs_list' %}is-active{% endif %}" {% if current_url == 'dogs_list' %}aria-current="page"{% endif %}>Perros</a></li>
-                    <li><a href="{% url 'service_history' %}" class="{% if current_url == 'service_history' %}is-active{% endif %}" {% if current_url == 'service_history' %}aria-current="page"{% endif %}>Histórico</a></li>
+                    {% if user.is_authenticated %}
+                        <li><a href="{% url 'appointments' %}" class="{% if current_url == 'appointments' %}is-active{% endif %}" {% if current_url == 'appointments' %}aria-current="page"{% endif %}>Citas</a></li>
+                        <li><a href="{% url 'contacts' %}" class="{% if current_url == 'contacts' %}is-active{% endif %}" {% if current_url == 'contacts' %}aria-current="page"{% endif %}>Contactos</a></li>
+                        <li><a href="{% url 'dogs_list' %}" class="{% if current_url == 'dogs_list' %}is-active{% endif %}" {% if current_url == 'dogs_list' %}aria-current="page"{% endif %}>Perros</a></li>
+                        <li><a href="{% url 'service_history' %}" class="{% if current_url == 'service_history' %}is-active{% endif %}" {% if current_url == 'service_history' %}aria-current="page"{% endif %}>Histórico</a></li>
+                    {% endif %}
                 {% endwith %}
+                {% if user.is_authenticated %}
+                    <li class="header__session">
+                        <span class="header__user">{{ user.get_username }}</span>
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button class="header__logout" type="submit">Salir</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li><a href="{% url 'login' %}" class="{% if request.resolver_match.url_name == 'login' %}is-active{% endif %}">Entrar</a></li>
+                    <li><a href="{% url 'register' %}" class="{% if request.resolver_match.url_name == 'register' %}is-active{% endif %}">Crear cuenta</a></li>
+                {% endif %}
             </ul>
         </nav>
         <main class="content">
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for message in messages %}
+                        <li class="flash-messages__item flash-messages__item--{{ message.tags|default:'info' }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
         {% django_browser_reload_script %}

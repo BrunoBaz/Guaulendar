@@ -31,7 +31,7 @@
         <dl class="history-breakdown history-detail-breakdown">
             <div>
                 <dt>Perro</dt>
-                <dd><a href="{% url 'dog_detail' service.dog_id %}">{{ service.dog_snapshot.name|default:service.dog.name }}</a></dd>
+                <dd><a href="{% url 'dog_detail' service.dog.public_id %}">{{ service.dog_snapshot.name|default:service.dog.name }}</a></dd>
             </div>
             {% if service.dog_snapshot.breed %}
                 <div>
@@ -89,8 +89,95 @@
                 </div>
             {% endif %}
         </dl>
-        {% if service.notes %}
-            <p class="history-card__notes">{{ service.notes }}</p>
+        <form class="history-notes-form" method="post" action="{% url 'service_history_detail' service.public_id %}">
+            {% csrf_token %}
+            <input type="hidden" name="history_action" value="update_notes">
+            <div class="contact-dialog__field">
+                <label for="history-notes">Notas del servicio</label>
+                <textarea id="history-notes" name="notes" rows="4"
+                    placeholder="Qué se le hizo al perro, incidencias, productos usados...">{{ service.notes }}</textarea>
+            </div>
+            <button class="contact-dialog__button contact-dialog__button--primary" type="submit">Guardar notas</button>
+        </form>
+    </section>
+
+    <section class="contact-detail-section" aria-labelledby="history-invoice-title">
+        <header class="contact-detail-section__header">
+            <div>
+                <p class="contacts-eyebrow">FACTURACIÓN / VERIFACTU</p>
+                <h2 id="history-invoice-title">Factura</h2>
+            </div>
+        </header>
+        {% if service.invoice %}
+            <dl class="history-breakdown history-detail-breakdown">
+                <div>
+                    <dt>Número</dt>
+                    <dd>{{ service.invoice.number }}</dd>
+                </div>
+                <div>
+                    <dt>Fecha de expedición</dt>
+                    <dd>{{ service.invoice.issue_date|date:"d/m/Y" }}</dd>
+                </div>
+                {% if service.invoice.recipient_name %}
+                    <div>
+                        <dt>Cliente</dt>
+                        <dd>{{ service.invoice.recipient_name }}{% if service.invoice.recipient_nif %} · {{ service.invoice.recipient_nif }}{% endif %}</dd>
+                    </div>
+                {% endif %}
+                <div>
+                    <dt>Base imponible</dt>
+                    <dd>{{ service.invoice.base_total|floatformat:2 }} €</dd>
+                </div>
+                <div>
+                    <dt>Cuota de IVA</dt>
+                    <dd>{{ service.invoice.tax_total|floatformat:2 }} €</dd>
+                </div>
+                <div class="history-breakdown__total">
+                    <dt>Importe total</dt>
+                    <dd>{{ service.invoice.total|floatformat:2 }} €</dd>
+                </div>
+                <div>
+                    <dt>Estado en la AEAT</dt>
+                    <dd>{{ service.invoice.verifactu.get_estado_display|default:"Sin enviar" }}</dd>
+                </div>
+                {% if service.invoice.verifactu.registro_id %}
+                    <div>
+                        <dt>Registro</dt>
+                        <dd>#{{ service.invoice.verifactu.registro_id }}</dd>
+                    </div>
+                {% endif %}
+                {% if service.invoice.verifactu.descripcion_error %}
+                    <div>
+                        <dt>Incidencia</dt>
+                        <dd>{{ service.invoice.verifactu.descripcion_error }}</dd>
+                    </div>
+                {% endif %}
+            </dl>
+            {% if service.invoice.verifactu.qr_image_src %}
+                <img class="invoice-qr" src="{{ service.invoice.verifactu.qr_image_src }}"
+                    alt="Código QR de la factura {{ service.invoice.number }}">
+            {% endif %}
+            {% if service.invoice.verifactu.sent_at %}
+                <form class="history-notes-form" method="post" action="{% url 'invoice_service' service.public_id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="invoice_action" value="refresh">
+                    <button class="contact-dialog__button contact-dialog__button--secondary" type="submit">Consultar estado en la AEAT</button>
+                </form>
+            {% else %}
+                <p class="history-invoice__intro">La factura todavía no se ha enviado a la AEAT. Vuelve a intentarlo cuando tengas configuradas las credenciales de VeriFactu.</p>
+                <form class="history-notes-form" method="post" action="{% url 'invoice_service' service.public_id %}">
+                    {% csrf_token %}
+                    <button class="contact-dialog__button contact-dialog__button--primary" type="submit">Enviar factura a la AEAT</button>
+                </form>
+            {% endif %}
+        {% elif service.status == "COMPLETED" %}
+            <p class="history-invoice__intro">Genera la factura simplificada de este servicio y envíala a la AEAT a través de VeriFactu. No hace falta el NIF del cliente.</p>
+            <form class="history-notes-form" method="post" action="{% url 'invoice_service' service.public_id %}">
+                {% csrf_token %}
+                <button class="contact-dialog__button contact-dialog__button--primary" type="submit">Facturar servicio</button>
+            </form>
+        {% else %}
+            <p class="contact-detail-empty">Solo se pueden facturar servicios completados.</p>
         {% endif %}
     </section>
 
@@ -126,7 +213,7 @@
                     <div class="contact-detail-owner">
                         <span class="owner-initial" aria-hidden="true">{{ contact.name|first|upper }}</span>
                         <div>
-                            <h3><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h3>
+                            <h3><a href="{% url 'contact_detail' contact.public_id %}">{{ contact.name }}</a></h3>
                             <a class="contact-detail-phone" href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
                             <a class="whatsapp-link" href="https://wa.me/{{ contact.phone|whatsapp_phone }}"
                                 target="_blank" rel="noopener noreferrer"

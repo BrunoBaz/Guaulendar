@@ -88,9 +88,14 @@ class createNewDogForm(forms.Form):
         widget=forms.HiddenInput(),
     )
 
-    def __init__(self, *args, instance=None, **kwargs):
+    def __init__(self, *args, instance=None, emisor=None, **kwargs):
         self.instance = instance
+        self.emisor = emisor if emisor is not None else getattr(instance, "emisor", None)
         super().__init__(*args, **kwargs)
+        if self.emisor is not None:
+            self.fields["owners"].queryset = Contacts.objects.filter(
+                emisor=self.emisor,
+            ).order_by("name")
         if instance is not None:
             self.initial.update({
                 "name": instance.name,
@@ -103,7 +108,7 @@ class createNewDogForm(forms.Form):
                 "is_active": instance.is_active,
                 "owners": instance.owners.values_list("pk", flat=True),
             })
-            self.fields["owners"].queryset = Contacts.objects.filter(
+            self.fields["owners"].queryset = self.fields["owners"].queryset.filter(
                 Q(is_active=True) | Q(dogs=instance),
             ).distinct().order_by("name")
 
@@ -112,15 +117,19 @@ class createNewDogForm(forms.Form):
         new_owner_name = cleaned_data.get("new_owner_name")
         new_owner_phone = cleaned_data.get("new_owner_phone")
 
+        existing_owners = Contacts.objects.filter(
+            is_active=True,
+            name__iexact=new_owner_name,
+            phone=new_owner_phone,
+        )
+        if self.emisor is not None:
+            existing_owners = existing_owners.filter(emisor=self.emisor)
+
         if new_owner_name and not new_owner_phone:
             self.add_error("new_owner_phone", "Indica el teléfono del nuevo cliente.")
         elif new_owner_phone and not new_owner_name:
             self.add_error("new_owner_name", "Indica el nombre del nuevo cliente.")
-        elif new_owner_name and new_owner_phone and Contacts.objects.filter(
-            is_active=True,
-            name__iexact=new_owner_name,
-            phone=new_owner_phone,
-        ).exists():
+        elif new_owner_name and new_owner_phone and existing_owners.exists():
             self.add_error(
                 "new_owner_name",
                 "Este cliente ya existe. Selecciónalo en la lista de clientes existentes.",

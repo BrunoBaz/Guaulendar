@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -5,13 +6,20 @@ from appointments.models import Appointment
 from clients.models import Contacts
 from dogs.models import Breed, Dog
 from historial.models import ServiceHistory
+from invoicing.models import Emisor, EmisorMember
 
 
 class DogsListPageTests(TestCase):
+	def setUp(self):
+		self.emisor = Emisor.objects.create(name="Peluquería Guau", nif="B12345678")
+		user = get_user_model().objects.create_user(username="tester", password="clave")
+		EmisorMember.objects.create(emisor=self.emisor, user=user)
+		self.client.force_login(user)
+
 	def test_dog_search_suggests_names_without_restricting_input(self):
 		breed, _ = Breed.objects.get_or_create(name="Golden Retriever")
-		dog = Dog.objects.create(name="Milo", breed=breed)
-		contact = Contacts.objects.create(name="Lucía Pérez", phone="555-0104")
+		dog = Dog.objects.create(emisor=self.emisor, name="Milo", breed=breed)
+		contact = Contacts.objects.create(emisor=self.emisor, name="Lucía Pérez", phone="555-0104")
 		contact.dogs.add(dog)
 
 		response = self.client.get(reverse("dogs_list"))
@@ -26,13 +34,14 @@ class DogsListPageTests(TestCase):
 	def test_dog_cards_show_details_and_owners(self):
 		breed, _ = Breed.objects.get_or_create(name="Golden Retriever")
 		dog = Dog.objects.create(
+			emisor=self.emisor,
 			name="Milo",
 			breed=breed,
 			sex="M",
 			color="Dorado",
 			coat_type="Largo",
 		)
-		contact = Contacts.objects.create(name="Lucía Pérez", phone="555-0104")
+		contact = Contacts.objects.create(emisor=self.emisor, name="Lucía Pérez", phone="555-0104")
 		contact.dogs.add(dog)
 
 		response = self.client.get(reverse("dogs_list"))
@@ -47,21 +56,21 @@ class DogsListPageTests(TestCase):
 		self.assertContains(response, "555-0104")
 
 	def test_dog_card_name_links_to_dog_detail(self):
-		dog = Dog.objects.create(name="Milo")
+		dog = Dog.objects.create(emisor=self.emisor, name="Milo")
 
 		response = self.client.get(reverse("dogs_list"))
 
 		self.assertContains(
 			response,
-			f'href="{reverse("dog_detail", args=[dog.pk])}">Milo</a>',
+			f'href="{reverse("dog_detail", args=[dog.public_id])}">Milo</a>',
 		)
 
 	def test_dog_detail_shows_only_its_related_data(self):
 		breed, _ = Breed.objects.get_or_create(name="Caniche")
-		dog = Dog.objects.create(name="Nube", breed=breed, color="Blanco")
-		other_dog = Dog.objects.create(name="Toby")
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		other_owner = Contacts.objects.create(name="Luis Pérez", phone="555-0102")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube", breed=breed, color="Blanco")
+		other_dog = Dog.objects.create(emisor=self.emisor, name="Toby")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		other_owner = Contacts.objects.create(emisor=self.emisor, name="Luis Pérez", phone="555-0102")
 		owner.dogs.add(dog)
 		other_owner.dogs.add(other_dog)
 		appointment = Appointment.objects.create(
@@ -75,17 +84,19 @@ class DogsListPageTests(TestCase):
 			service_type="CORTE",
 		)
 		history = ServiceHistory.objects.create(
+			emisor=self.emisor,
 			dog=dog,
 			date="2026-11-01T10:00:00Z",
 			service_type="BAÑO",
 		)
 		ServiceHistory.objects.create(
+			emisor=self.emisor,
 			dog=other_dog,
 			date="2026-10-01T10:00:00Z",
 			service_type="CORTE",
 		)
 
-		response = self.client.get(reverse("dog_detail", args=[dog.pk]))
+		response = self.client.get(reverse("dog_detail", args=[dog.public_id]))
 
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.context["dog"], dog)
@@ -113,10 +124,10 @@ class DogsListPageTests(TestCase):
 		self.assertNotContains(response, "Toby")
 
 	def test_dog_detail_creates_appointment_without_leaving_the_dog_page(self):
-		dog = Dog.objects.create(name="Nube")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 
 		response = self.client.post(
-			reverse("dog_detail", args=[dog.pk]),
+			reverse("dog_detail", args=[dog.public_id]),
 			{
 				"dog": dog.pk,
 				"service_type": "BAÑO",
@@ -128,7 +139,7 @@ class DogsListPageTests(TestCase):
 			},
 		)
 
-		self.assertRedirects(response, reverse("dog_detail", args=[dog.pk]))
+		self.assertRedirects(response, reverse("dog_detail", args=[dog.public_id]))
 		appointment = Appointment.objects.get(dog=dog)
 		self.assertEqual(appointment.service_type, "BAÑO")
 		self.assertEqual(appointment.price, 45)
@@ -136,11 +147,11 @@ class DogsListPageTests(TestCase):
 		self.assertEqual(appointment.notes, "Corte de uñas")
 
 	def test_dog_detail_does_not_create_appointment_for_another_dog(self):
-		dog = Dog.objects.create(name="Nube")
-		other_dog = Dog.objects.create(name="Toby")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
+		other_dog = Dog.objects.create(emisor=self.emisor, name="Toby")
 
 		response = self.client.post(
-			reverse("dog_detail", args=[dog.pk]),
+			reverse("dog_detail", args=[dog.public_id]),
 			{
 				"dog": other_dog.pk,
 				"service_type": "BAÑO",
@@ -158,20 +169,20 @@ class DogsListPageTests(TestCase):
 		self.assertEqual(Appointment.objects.count(), 0)
 
 	def test_inactive_dog_detail_does_not_offer_new_appointment(self):
-		dog = Dog.objects.create(name="Nube", is_active=False)
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube", is_active=False)
 
-		response = self.client.get(reverse("dog_detail", args=[dog.pk]))
+		response = self.client.get(reverse("dog_detail", args=[dog.public_id]))
 
 		self.assertEqual(response.status_code, 200)
 		self.assertNotContains(response, "Añadir cita")
 
 	def test_dog_detail_can_edit_dog_details_and_status(self):
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		dog = Dog.objects.create(name="Nube")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		owner.dogs.add(dog)
 
 		response = self.client.post(
-			reverse("dog_detail", args=[dog.pk]),
+			reverse("dog_detail", args=[dog.public_id]),
 			{
 				"dog_action": "edit",
 				"name": "Nube nueva",
@@ -185,7 +196,7 @@ class DogsListPageTests(TestCase):
 			},
 		)
 
-		self.assertRedirects(response, reverse("dog_detail", args=[dog.pk]))
+		self.assertRedirects(response, reverse("dog_detail", args=[dog.public_id]))
 		dog.refresh_from_db()
 		self.assertEqual(dog.name, "Nube nueva")
 		self.assertEqual(dog.color, "Blanco")
@@ -196,15 +207,16 @@ class DogsListPageTests(TestCase):
 
 	def test_dog_detail_cannot_reactivate_dog_without_active_owner(self):
 		owner = Contacts.objects.create(
+			emisor=self.emisor,
 			name="Ana Ruiz",
 			phone="555-0101",
 			is_active=False,
 		)
-		dog = Dog.objects.create(name="Nube", is_active=False)
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube", is_active=False)
 		owner.dogs.add(dog)
 
 		response = self.client.post(
-			reverse("dog_detail", args=[dog.pk]),
+			reverse("dog_detail", args=[dog.public_id]),
 			{
 				"dog_action": "edit",
 				"name": "Nube",
@@ -224,11 +236,11 @@ class DogsListPageTests(TestCase):
 		self.assertFalse(dog.is_active)
 
 	def test_dog_owner_filter_includes_name_and_phone_for_search(self):
-		dog = Dog.objects.create(name="Nube")
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0199")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0199")
 		owner.dogs.add(dog)
 
-		response = self.client.get(reverse("dog_detail", args=[dog.pk]))
+		response = self.client.get(reverse("dog_detail", args=[dog.public_id]))
 
 		self.assertContains(response, "Ana Ruiz")
 		self.assertContains(response, "555-0199")
@@ -239,8 +251,9 @@ class DogsListPageTests(TestCase):
 		self.assertContains(response, 'href="https://wa.me/345550199"')
 
 	def test_dog_cards_mark_discardable_owners(self):
-		dog = Dog.objects.create(name="Milo")
+		dog = Dog.objects.create(emisor=self.emisor, name="Milo")
 		contact = Contacts.objects.create(
+			emisor=self.emisor,
 			name="Lucía Pérez",
 			phone="555-0104",
 			descartable=True,
@@ -259,7 +272,7 @@ class DogsListPageTests(TestCase):
 
 	def test_registration_dialog_renders_dog_and_owner_fields(self):
 		breed, _ = Breed.objects.get_or_create(name="Caniche")
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
 
 		response = self.client.get(reverse("dogs_list"))
 
@@ -297,8 +310,9 @@ class DogsListPageTests(TestCase):
 		self.assertEqual(response.content.count(b'id="id_name"'), 1)
 
 	def test_dog_edit_cards_include_inactive_owner_ids_for_selection(self):
-		dog = Dog.objects.create(name="Nube")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		owner = Contacts.objects.create(
+			emisor=self.emisor,
 			name="Ana Ruiz",
 			phone="555-0101",
 			is_active=False,
@@ -360,8 +374,8 @@ class DogsListPageTests(TestCase):
 		self.assertEqual(Dog.objects.get(name="Nube").breed, breed)
 
 	def test_dog_registration_post_associates_existing_owners(self):
-		first_owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		second_owner = Contacts.objects.create(name="Luis Pérez", phone="555-0102")
+		first_owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		second_owner = Contacts.objects.create(emisor=self.emisor, name="Luis Pérez", phone="555-0102")
 
 		response = self.client.post(
 			reverse("dogs_list"),
@@ -377,8 +391,8 @@ class DogsListPageTests(TestCase):
 		self.assertTrue(dog.is_active)
 
 	def test_dog_list_can_filter_by_status(self):
-		Dog.objects.create(name="Activo")
-		Dog.objects.create(name="Inactivo", is_active=False)
+		Dog.objects.create(emisor=self.emisor, name="Activo")
+		Dog.objects.create(emisor=self.emisor, name="Inactivo", is_active=False)
 
 		active_response = self.client.get(reverse("dogs_list"), {"status": "active"})
 		inactive_response = self.client.get(reverse("dogs_list"), {"status": "inactive"})
@@ -391,8 +405,8 @@ class DogsListPageTests(TestCase):
 		self.assertContains(inactive_response, 'value="inactive" selected')
 
 	def test_dog_edit_without_any_owner_deactivates_dog(self):
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		dog = Dog.objects.create(name="Nube")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		dog.owners.add(owner)
 
 		response = self.client.post(
@@ -416,8 +430,8 @@ class DogsListPageTests(TestCase):
 		self.assertFalse(dog.owners.exists())
 
 	def test_removing_last_owner_automatically_deactivates_dog(self):
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		dog = Dog.objects.create(name="Nube")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		dog.owners.add(owner)
 
 		with self.captureOnCommitCallbacks(execute=True):
@@ -427,8 +441,8 @@ class DogsListPageTests(TestCase):
 		self.assertFalse(dog.is_active)
 
 	def test_deactivating_the_only_owner_automatically_deactivates_dog(self):
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		dog = Dog.objects.create(name="Nube")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		dog.owners.add(owner)
 
 		owner.is_active = False
@@ -439,9 +453,9 @@ class DogsListPageTests(TestCase):
 		self.assertQuerySetEqual(dog.owners.all(), [owner])
 
 	def test_deactivating_one_owner_keeps_dog_active_if_another_is_active(self):
-		inactive_owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		active_owner = Contacts.objects.create(name="Luis Pérez", phone="555-0102")
-		dog = Dog.objects.create(name="Nube")
+		inactive_owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		active_owner = Contacts.objects.create(emisor=self.emisor, name="Luis Pérez", phone="555-0102")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		dog.owners.add(inactive_owner, active_owner)
 
 		inactive_owner.is_active = False
@@ -471,9 +485,10 @@ class DogsListPageTests(TestCase):
 		self.assertQuerySetEqual(dog.owners.all(), [owner])
 
 	def test_dog_edit_updates_details_and_replaces_owners(self):
-		old_owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		new_owner = Contacts.objects.create(name="Luis Pérez", phone="555-0102")
+		old_owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		new_owner = Contacts.objects.create(emisor=self.emisor, name="Luis Pérez", phone="555-0102")
 		dog = Dog.objects.create(
+			emisor=self.emisor,
 			name="Nube",
 			color="Blanco",
 			dog_notes="Nota anterior",
@@ -508,8 +523,8 @@ class DogsListPageTests(TestCase):
 		self.assertQuerySetEqual(dog.owners.all(), [new_owner])
 
 	def test_dog_can_be_deactivated_without_deleting_its_record_or_owners(self):
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-		dog = Dog.objects.create(name="Nube")
+		owner = Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(emisor=self.emisor, name="Nube")
 		dog.owners.add(owner)
 		appointment = Appointment.objects.create(
 			dog=dog,
@@ -526,7 +541,7 @@ class DogsListPageTests(TestCase):
 		self.assertFalse(dog.is_active)
 		self.assertQuerySetEqual(dog.owners.all(), [owner])
 		self.assertFalse(Appointment.objects.filter(pk=appointment.pk).exists())
-		detail_response = self.client.get(reverse("dog_detail", args=[dog.pk]))
+		detail_response = self.client.get(reverse("dog_detail", args=[dog.public_id]))
 		self.assertEqual(list(detail_response.context["appointments"]), [])
 		self.assertNotContains(detail_response, "Pendiente")
 		self.assertContains(self.client.get(reverse("dogs_list")), "Inactivo")
@@ -546,7 +561,7 @@ class DogsListPageTests(TestCase):
 		self.assertFalse(Contacts.objects.filter(name="Ana Ruiz").exists())
 
 	def test_existing_owner_cannot_be_duplicated_as_new(self):
-		Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+		Contacts.objects.create(emisor=self.emisor, name="Ana Ruiz", phone="555-0101")
 
 		response = self.client.post(
 			reverse("dogs_list"),

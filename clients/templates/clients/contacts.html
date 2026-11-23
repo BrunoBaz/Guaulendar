@@ -59,7 +59,7 @@
                 <span class="contact-avatar" aria-hidden="true">{{ contact.name|first|upper }}</span>
                 <div class="contact-identity">
                     <p class="contact-kicker">{% if contact.is_active %}RESPONSABLE ACTIVO{% else %}RESPONSABLE INACTIVO{% endif %}</p>
-                    <h2><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h2>
+                    <h2><a href="{% url 'contact_detail' contact.public_id %}">{{ contact.name }}</a></h2>
                     {% if contact.descartable %}
                         <span class="discardable-badge" title="Cliente marcado como no prioritario para futuras visitas">
                             No priorizar
@@ -101,6 +101,7 @@
                 <button class="contact-dialog__button contact-dialog__button--secondary"
                     type="button" data-edit-contact="{{ contact.pk }}"
                     data-name="{{ contact.name }}" data-phone="{{ contact.phone }}"
+                    data-nif="{{ contact.nif }}"
                     data-active="{{ contact.is_active|yesno:'true,false' }}"
                     data-descartable="{{ contact.descartable|yesno:'true,false' }}">
                     Editar contacto

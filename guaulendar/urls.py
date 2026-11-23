@@ -41,12 +41,17 @@ urlpatterns = [
         ),
     ),
     path('contacts/', contacts, name='contacts'),
-    path('contacts/<int:contact_id>/', contact_detail, name='contact_detail'),
+    path('contacts/<uuid:public_id>/', contact_detail, name='contact_detail'),
     path('dogs/', dogs_list, name='dogs_list'),
-    path('dogs/<int:dog_id>/', dog_detail, name='dog_detail'),
+    path('dogs/<uuid:public_id>/', dog_detail, name='dog_detail'),
     path('service_history/', service_history, name='service_history'),
-    path('service_history/<int:history_id>/', service_history_detail, name='service_history_detail'),
+    path('service_history/<uuid:public_id>/', service_history_detail, name='service_history_detail'),
+    path('', include('accounts.urls')),
+    path('', include('invoicing.urls')),
     path('', appointments, name='appointments'),
 
     path('__reload__/', include('django_browser_reload.urls')),
 ]
+
+# Una dirección que no existe lleva al usuario a una pantalla válida con un aviso.
+handler404 = "accounts.views.page_not_found"

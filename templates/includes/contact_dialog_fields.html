@@ -9,6 +9,11 @@
     {{ contact_form.phone.errors }}
 </div>
 {% if not dog_mode %}
+    <div class="contact-dialog__field">
+        {{ contact_form.nif.label_tag }}
+        {{ contact_form.nif }}
+        {{ contact_form.nif.errors }}
+    </div>
     <div class="contact-dialog__check-field">
         {{ contact_form.descartable }}
         {{ contact_form.descartable.label_tag }}

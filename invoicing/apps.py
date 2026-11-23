@@ -1,0 +1,6 @@
+from django.apps import AppConfig
+
+
+class InvoicingConfig(AppConfig):
+    name = "invoicing"
+    verbose_name = "Facturación"

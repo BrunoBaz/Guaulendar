@@ -60,7 +60,7 @@
                 <span class="dog-profile-mark" aria-hidden="true">{{ dog.name|first|upper }}</span>
                 <div class="dog-card__identity">
                     <p class="contact-kicker">FICHA DEL PERRO</p>
-                    <h2><a href="{% url 'dog_detail' dog.pk %}">{{ dog.name }}</a></h2>
+                    <h2><a href="{% url 'dog_detail' dog.public_id %}">{{ dog.name }}</a></h2>
                 </div>
                 {% if dog.is_active %}
                     <span class="dog-status dog-status--active">Activo</span>

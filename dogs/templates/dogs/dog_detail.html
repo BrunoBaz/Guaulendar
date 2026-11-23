@@ -174,7 +174,7 @@
                     <div class="contact-detail-owner">
                         <span class="owner-initial" aria-hidden="true">{{ contact.name|first|upper }}</span>
                         <div>
-                            <h3><a href="{% url 'contact_detail' contact.pk %}">{{ contact.name }}</a></h3>
+                            <h3><a href="{% url 'contact_detail' contact.public_id %}">{{ contact.name }}</a></h3>
                             <a class="contact-detail-phone" href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
                             <a class="whatsapp-link" href="https://wa.me/{{ contact.phone|whatsapp_phone }}"
                                 target="_blank" rel="noopener noreferrer"
@@ -282,7 +282,7 @@
                 <article class="contact-detail-record">
                     <div>
                         <p class="contact-kicker">{{ service.date|date:"d/m/Y · H:i" }}</p>
-                        <h3><a href="{% url 'service_history_detail' service.pk %}">{{ service.get_service_type_display }}</a></h3>
+                        <h3><a href="{% url 'service_history_detail' service.public_id %}">{{ service.get_service_type_display }}</a></h3>
                     </div>
                     <div class="contact-detail-record__aside">
                         <span class="history-status {% if service.status == 'COMPLETED' %}history-status--completed{% else %}history-status--cancelled{% endif %}">

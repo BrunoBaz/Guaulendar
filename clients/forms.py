@@ -24,6 +24,19 @@ class createNewContactForm(forms.Form):
         ),
     )
 
+    nif = forms.CharField(
+        label="NIF",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "id": "contact-nif",
+                "placeholder": "Ej. 12345678Z",
+                "autocomplete": "off",
+            }
+        ),
+    )
+
     descartable = forms.BooleanField(label="Contacto descartable", required=False)
 
     def __init__(self, *args, instance=None, **kwargs):
@@ -33,6 +46,7 @@ class createNewContactForm(forms.Form):
             self.initial.update({
                 "name": instance.name,
                 "phone": instance.phone,
+                "nif": instance.nif,
                 "is_active": instance.is_active,
                 "descartable": instance.descartable,
             })

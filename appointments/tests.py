@@ -11,12 +11,19 @@ from django.utils import timezone
 from clients.models import Contacts
 from dogs.models import Dog
 from historial.models import ServiceHistory
+from invoicing.models import Emisor, EmisorMember
 from .models import Appointment, AppointmentAuditEvent
 
 
 class AppointmentServiceHistoryTests(TestCase):
+	def setUp(self):
+		self.emisor = Emisor.objects.create(name="Peluquería Guau", nif="B12345678")
+		user = get_user_model().objects.create_user(username="tester", password="clave")
+		EmisorMember.objects.create(emisor=self.emisor, user=user)
+		self.client.force_login(user)
+
 	def test_create_appointment_post_saves_fields_and_redirects(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		start = timezone.localtime(timezone.now() + timedelta(days=1)).replace(
 			second=0,
 			microsecond=0,
@@ -62,7 +69,7 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertEqual(Appointment.objects.count(), 0)
 
 	def test_update_appointment_post_saves_editable_fields(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		appointment = Appointment.objects.create(
 			dog=dog,
 			date=timezone.now(),
@@ -103,8 +110,8 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertEqual(event.changes["status"]["after"], "CONFIRMED")
 
 	def test_completing_appointment_stores_sequential_discounts_and_final_price(self):
-		dog = Dog.objects.create(name="Luna")
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
+		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
 		owner.dogs.add(dog)
 		appointment = Appointment.objects.create(
 			dog=dog,
@@ -146,12 +153,12 @@ class AppointmentServiceHistoryTests(TestCase):
 			audit_event.changes["history_id"]["after"],
 			history.pk,
 		)
-		self.assertEqual(history.taxable_base, Decimal("100.00"))
+		self.assertEqual(history.taxable_base, Decimal("85.87"))
 		self.assertEqual(history.discounts, [
 			{
 				"type": "PERCENTAGE",
 				"value": "10.00",
-				"amount": "10.00",
+				"amount": "12.10",
 				"description": "Descuento de fidelidad",
 			},
 			{
@@ -161,16 +168,16 @@ class AppointmentServiceHistoryTests(TestCase):
 				"description": "Promoción de temporada",
 			},
 		])
-		self.assertEqual(history.discount_amount, Decimal("15.00"))
-		self.assertEqual(history.tax_amount, Decimal("21.00"))
-		self.assertEqual(history.total_price, Decimal("106.00"))
+		self.assertEqual(history.discount_amount, Decimal("17.10"))
+		self.assertEqual(history.tax_amount, Decimal("18.03"))
+		self.assertEqual(history.total_price, Decimal("103.90"))
 		self.assertEqual(history.payment_method, "CARD")
 		history_response = self.client.get(reverse("service_history"))
 		self.assertContains(history_response, "Descuento 10,00%")
 		self.assertContains(history_response, "Descuento de fidelidad")
 		self.assertContains(history_response, "Descuento 5,00 €")
 		self.assertContains(history_response, "Promoción de temporada")
-		self.assertContains(history_response, "106,00 €")
+		self.assertContains(history_response, "103,90 €")
 		self.assertContains(history_response, "Tarjeta")
 
 		dog.name = "Luna nueva"
@@ -178,15 +185,15 @@ class AppointmentServiceHistoryTests(TestCase):
 		owner.name = "Ana nueva"
 		owner.save()
 		detail_response = self.client.get(
-			reverse("service_history_detail", args=[history.pk])
+			reverse("service_history_detail", args=[history.public_id])
 		)
 		self.assertContains(detail_response, "Luna")
 		self.assertContains(detail_response, "Ana Ruiz")
 		self.assertContains(detail_response, "Tarjeta")
 		self.assertNotContains(detail_response, "Ana nueva")
 
-	def test_completed_appointment_rejects_discounts_over_remaining_taxable_base(self):
-		dog = Dog.objects.create(name="Luna")
+	def test_completed_appointment_rejects_discounts_over_remaining_total(self):
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		appointment = Appointment.objects.create(
 			dog=dog,
 			date=timezone.now(),
@@ -207,18 +214,18 @@ class AppointmentServiceHistoryTests(TestCase):
 				"payment_method": "CASH",
 				"discounts_json": json.dumps([
 					{"type": "FIXED", "value": "90"},
-					{"type": "FIXED", "value": "20"},
+					{"type": "FIXED", "value": "40"},
 				]),
 			},
 		)
 
 		self.assertEqual(response.status_code, 200)
-		self.assertContains(response, "Los descuentos no pueden superar la base imponible restante.")
+		self.assertContains(response, "Los descuentos no pueden superar el total restante.")
 		self.assertTrue(Appointment.objects.filter(pk=appointment.pk, status="PENDING").exists())
 		self.assertEqual(ServiceHistory.objects.count(), 0)
 
 	def test_completing_appointment_requires_payment_method(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		appointment = Appointment.objects.create(
 			dog=dog,
 			date=timezone.now(),
@@ -246,7 +253,7 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertEqual(ServiceHistory.objects.count(), 0)
 
 	def test_quick_status_actions_confirm_or_cancel_appointments(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		appointment = Appointment.objects.create(dog=dog, date=timezone.now())
 
 		response = self.client.post(
@@ -268,8 +275,8 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertEqual(ServiceHistory.objects.get(dog=dog).status, "CANCELLED")
 
 	def test_appointment_page_renders_creation_dialog_and_active_dog_choices(self):
-		dog = Dog.objects.create(name="Luna")
-		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
+		owner = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
 		owner.dogs.add(dog)
 
 		response = self.client.get(reverse("appointments"))
@@ -288,7 +295,7 @@ class AppointmentServiceHistoryTests(TestCase):
 		)
 
 	def test_appointment_page_opens_creation_dialog_with_selected_dog(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 
 		response = self.client.get(
 			reverse("appointments"),
@@ -304,7 +311,7 @@ class AppointmentServiceHistoryTests(TestCase):
 		)
 
 	def test_inactive_dog_cannot_be_preselected_for_a_new_appointment(self):
-		dog = Dog.objects.create(name="Luna", is_active=False)
+		dog = Dog.objects.create(name="Luna", is_active=False, emisor=self.emisor)
 
 		response = self.client.get(
 			reverse("appointments"),
@@ -314,7 +321,7 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertEqual(response.status_code, 404)
 
 	def test_appointment_model_rejects_inactive_dogs(self):
-		dog = Dog.objects.create(name="Luna", is_active=False)
+		dog = Dog.objects.create(name="Luna", is_active=False, emisor=self.emisor)
 		appointment = Appointment(
 			dog=dog,
 			date=timezone.now(),
@@ -324,7 +331,7 @@ class AppointmentServiceHistoryTests(TestCase):
 			appointment.save()
 
 	def test_calendar_hides_legacy_appointments_for_inactive_dogs(self):
-		dog = Dog.objects.create(name="Luna", is_active=False)
+		dog = Dog.objects.create(name="Luna", is_active=False, emisor=self.emisor)
 		Appointment.objects.bulk_create([
 			Appointment(dog=dog, date=timezone.now()),
 		])
@@ -336,11 +343,12 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertNotContains(response, "Luna")
 
 	def test_dog_choice_marks_discardable_owner(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		owner = Contacts.objects.create(
 			name="Ana Ruiz",
 			phone="555-0101",
 			descartable=True,
+			emisor=self.emisor,
 		)
 		owner.dogs.add(dog)
 
@@ -352,8 +360,8 @@ class AppointmentServiceHistoryTests(TestCase):
 		)
 
 	def test_calendar_includes_time_task_owner_and_status(self):
-		dog = Dog.objects.create(name="Luna")
-		contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
+		contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
 		contact.dogs.add(dog)
 		appointment = Appointment.objects.create(
 			dog=dog,
@@ -382,11 +390,12 @@ class AppointmentServiceHistoryTests(TestCase):
 		)
 
 	def test_calendar_owner_data_includes_discardable_status(self):
-		dog = Dog.objects.create(name="Luna")
+		dog = Dog.objects.create(name="Luna", emisor=self.emisor)
 		contact = Contacts.objects.create(
 			name="Ana Ruiz",
 			phone="555-0101",
 			descartable=True,
+			emisor=self.emisor,
 		)
 		contact.dogs.add(dog)
 		Appointment.objects.create(
@@ -403,7 +412,7 @@ class AppointmentServiceHistoryTests(TestCase):
 	def test_terminal_appointments_are_archived_and_deleted(self):
 		for status in ("COMPLETED", "CANCELLED"):
 			with self.subTest(status=status):
-				dog = Dog.objects.create(name=f"Luna {status}")
+				dog = Dog.objects.create(name=f"Luna {status}", emisor=self.emisor)
 				appointment_date = timezone.now()
 				appointment = Appointment.objects.create(
 					dog=dog,
@@ -425,11 +434,11 @@ class AppointmentServiceHistoryTests(TestCase):
 				self.assertEqual(history.status, status)
 				self.assertEqual(history.notes, "Corte de uñas")
 				self.assertEqual(history.price, Decimal("100.00"))
-				self.assertEqual(history.taxable_base, Decimal("82.64"))
+				self.assertEqual(history.taxable_base, Decimal("74.38"))
 				if status == "COMPLETED":
-					self.assertEqual(history.discount_amount, Decimal("8.26"))
-					self.assertEqual(history.tax_amount, Decimal("17.36"))
-					self.assertEqual(history.total_price, Decimal("91.74"))
+					self.assertEqual(history.discount_amount, Decimal("10.00"))
+					self.assertEqual(history.tax_amount, Decimal("15.62"))
+					self.assertEqual(history.total_price, Decimal("90.00"))
 				else:
 					self.assertEqual(history.discount_amount, Decimal("0.00"))
 					self.assertEqual(history.tax_amount, Decimal("0.00"))
@@ -437,8 +446,8 @@ class AppointmentServiceHistoryTests(TestCase):
 
 		self.assertEqual(ServiceHistory.objects.count(), 2)
 
-	def test_fixed_discount_is_applied_before_tax(self):
-		dog = Dog.objects.create(name="Nala")
+	def test_fixed_discount_is_applied_over_total_and_reduces_tax(self):
+		dog = Dog.objects.create(name="Nala", emisor=self.emisor)
 		appointment = Appointment.objects.create(
 			dog=dog,
 			date=timezone.now(),
@@ -450,9 +459,9 @@ class AppointmentServiceHistoryTests(TestCase):
 		appointment.save()
 
 		history = ServiceHistory.objects.get(dog=dog)
-		self.assertEqual(history.taxable_base, Decimal("41.32"))
+		self.assertEqual(history.taxable_base, Decimal("37.19"))
 		self.assertEqual(history.discount_amount, Decimal("5.00"))
-		self.assertEqual(history.tax_amount, Decimal("8.68"))
+		self.assertEqual(history.tax_amount, Decimal("7.81"))
 		self.assertEqual(history.total_price, Decimal("45.00"))
 
 	def test_admin_can_save_terminal_appointment(self):
@@ -462,13 +471,14 @@ class AppointmentServiceHistoryTests(TestCase):
 			password="test-password",
 		)
 		self.client.force_login(user)
-		dog = Dog.objects.create(name="Toby")
+		dog = Dog.objects.create(name="Toby", emisor=self.emisor)
 		appointment = Appointment.objects.create(dog=dog, date=timezone.now())
 
 		response = self.client.post(
 			reverse("admin:appointments_appointment_change", args=[appointment.pk]),
 			{
 				"dog": dog.pk,
+				"emisor": self.emisor.pk,
 				"service_type": "COMPLETO",
 				"price": "75.00",
 				"discount_type": "FIXED",
@@ -488,9 +498,9 @@ class AppointmentServiceHistoryTests(TestCase):
 		self.assertEqual(history.status, "COMPLETED")
 		self.assertEqual(history.service_type, "COMPLETO")
 		self.assertEqual(history.price, Decimal("75.00"))
-		self.assertEqual(history.taxable_base, Decimal("61.98"))
+		self.assertEqual(history.taxable_base, Decimal("57.85"))
 		self.assertEqual(history.discount_amount, Decimal("5.00"))
-		self.assertEqual(history.tax_amount, Decimal("13.02"))
+		self.assertEqual(history.tax_amount, Decimal("12.15"))
 		self.assertEqual(history.total_price, Decimal("70.00"))
 		audit_event = AppointmentAuditEvent.objects.get(
 			appointment_id=appointment.pk,

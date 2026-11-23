@@ -15,6 +15,12 @@ class Appointment(models.Model):
 	STATUS_CHOICES = STATUS_CHOICES
 	PAYMENT_METHOD_CHOICES = PAYMENT_METHOD_CHOICES
 
+	emisor = models.ForeignKey(
+		"invoicing.Emisor",
+		on_delete=models.CASCADE,
+		related_name="appointments",
+		null=True,
+	)
 	dog = models.ForeignKey(
 		"dogs.Dog",
 		on_delete=models.CASCADE,
@@ -66,18 +72,14 @@ class Appointment(models.Model):
 	def __str__(self):
 		return f"{self.dog.name} - {self.date:%d/%m/%Y}"
 
-	@property
-	def taxable_base(self):
-		return calculate_pricing(self.price, self.tax_rate, [])["taxable_base"]
-
 	def clean(self):
 		super().clean()
 		if self.dog_id and not self.dog.is_active:
 			raise ValidationError({"dog": "No se pueden asignar citas a un perro inactivo."})
 		if self.discount_type == "PERCENTAGE" and self.discount_value > Decimal("100.00"):
 			raise ValidationError({"discount_value": "El descuento porcentual no puede superar el 100 %."})
-		if self.discount_type == "FIXED" and self.discount_value > self.taxable_base:
-			raise ValidationError({"discount_value": "El descuento no puede superar la base imponible."})
+		if self.discount_type == "FIXED" and self.discount_value > self.price:
+			raise ValidationError({"discount_value": "El descuento no puede superar el total."})
 		if self.discounts:
 			try:
 				calculate_pricing(self.price, self.tax_rate, self.discounts)
@@ -117,6 +119,8 @@ class Appointment(models.Model):
 	def save(self, *args, actor=None, **kwargs):
 		if not self.dog.is_active:
 			raise ValidationError({"dog": "No se pueden asignar citas a un perro inactivo."})
+		if self.emisor_id is None:
+			self.emisor = self.dog.emisor
 
 		before = type(self).objects.filter(pk=self.pk).first() if self.pk else None
 		before_data = before._audit_data() if before else None
@@ -153,6 +157,7 @@ class Appointment(models.Model):
 
 			history = ServiceHistory.objects.create(
 				dog_id=self.dog_id,
+				emisor_id=self.emisor_id,
 				date=self.date,
 				dog_snapshot=self._dog_snapshot(),
 				price=self.price,

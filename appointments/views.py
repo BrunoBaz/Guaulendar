@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -7,6 +8,7 @@ from django.utils import timezone
 
 from clients.models import Contacts
 from dogs.models import Dog
+from invoicing.models import emisor_for_user
 from .forms import AppointmentForm
 from .models import Appointment
 
@@ -17,13 +19,17 @@ SERVICE_CLASS_NAMES = {
 }
 
 
+@login_required
 def appointments(request):
+	emisor = emisor_for_user(request.user)
+	if emisor is None:
+		raise Http404("La cuenta no tiene ningún negocio asignado.")
 	appointment_id = request.POST.get("appointment_id") if request.method == "POST" else None
 	quick_status = request.POST.get("quick_status") if request.method == "POST" else None
 	if quick_status:
 		if quick_status not in {"PENDING", "CONFIRMED", "CANCELLED"}:
 			raise Http404("Estado de cita no válido.")
-		appointment = get_object_or_404(Appointment, pk=appointment_id)
+		appointment = get_object_or_404(Appointment, pk=appointment_id, emisor=emisor)
 		appointment.status = quick_status
 		if quick_status == "CANCELLED":
 			appointment.discounts = []
@@ -38,9 +44,10 @@ def appointments(request):
 			Dog,
 			pk=request.GET["dog_id"],
 			is_active=True,
+			emisor=emisor,
 		)
 	instance = (
-		get_object_or_404(Appointment, pk=appointment_id)
+		get_object_or_404(Appointment, pk=appointment_id, emisor=emisor)
 		if appointment_id
 		else None
 	)
@@ -48,6 +55,7 @@ def appointments(request):
 		request.POST or None,
 		instance=instance,
 		initial={"dog": selected_dog.pk} if selected_dog else None,
+		emisor=emisor,
 	)
 	if request.method == "POST" and form.is_valid():
 		appointment = form.save(commit=False)
@@ -59,7 +67,7 @@ def appointments(request):
 		return redirect("appointments")
 
 	appointments = (
-		Appointment.objects.filter(dog__is_active=True)
+		Appointment.objects.filter(dog__is_active=True, emisor=emisor)
 		.select_related("dog")
 		.prefetch_related(
 			Prefetch(

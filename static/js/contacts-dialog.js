@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const saveButton = document.getElementById("save-contact-dialog");
     const nameInput = dialog?.querySelector("#contact-name");
     const phoneInput = dialog?.querySelector("#contact-phone");
+    const nifInput = dialog?.querySelector("#contact-nif");
     const form = dialog?.querySelector("#contact-registration-form");
     const contactIdInput = dialog?.querySelector("#contact-id");
     const contactActionInput = dialog?.querySelector("#contact-action");
@@ -41,6 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
         button.addEventListener("click", () => {
             nameInput.value = button.dataset.name;
             phoneInput.value = button.dataset.phone;
+            if (nifInput) {
+                nifInput.value = button.dataset.nif || "";
+            }
             descartableInput.checked = button.dataset.descartable === "true";
             contactIdInput.value = button.dataset.editContact;
             contactActionInput.value = "edit";

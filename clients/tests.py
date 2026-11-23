@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -5,10 +6,17 @@ from appointments.models import Appointment
 from clients.templatetags.contact_filters import whatsapp_phone
 from dogs.models import Breed, Dog
 from historial.models import ServiceHistory
+from invoicing.models import Emisor, EmisorMember
 from .models import Contacts
 
 
 class ContactsPageTests(TestCase):
+    def setUp(self):
+        self.emisor = Emisor.objects.create(name="Peluquería Guau", nif="B12345678")
+        user = get_user_model().objects.create_user(username="tester", password="clave")
+        EmisorMember.objects.create(emisor=self.emisor, user=user)
+        self.client.force_login(user)
+
     def test_whatsapp_phone_adds_spain_prefix_and_removes_formatting(self):
         self.assertEqual(whatsapp_phone("600 111-222"), "34600111222")
         self.assertEqual(whatsapp_phone("+34 600 111 222"), "34600111222")
@@ -16,7 +24,7 @@ class ContactsPageTests(TestCase):
         self.assertEqual(whatsapp_phone(""), "")
 
     def test_contact_card_links_to_whatsapp_and_keeps_call_link(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="600 111-222")
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="600 111-222", emisor=self.emisor)
 
         response = self.client.get(reverse("contacts"))
 
@@ -28,8 +36,8 @@ class ContactsPageTests(TestCase):
         )
 
     def test_contact_search_suggests_names_without_restricting_input(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-        contact.dogs.add(Dog.objects.create(name="Nube"))
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
+        contact.dogs.add(Dog.objects.create(name="Nube", emisor=self.emisor))
 
         response = self.client.get(reverse("contacts"))
 
@@ -88,17 +96,18 @@ class ContactsPageTests(TestCase):
 
     def test_contacts_page_shows_active_and_inactive_contacts_by_default(self):
         breed, _ = Breed.objects.get_or_create(name="Caniche")
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
         contact.dogs.add(
-            Dog.objects.create(name="Nube", breed=breed, sex="F", color="Blanco"),
-            Dog.objects.create(name="Milo", breed=breed, sex="M", color="Crema"),
+            Dog.objects.create(name="Nube", breed=breed, sex="F", color="Blanco", emisor=self.emisor),
+            Dog.objects.create(name="Milo", breed=breed, sex="M", color="Crema", emisor=self.emisor),
         )
         inactive_contact = Contacts.objects.create(
             name="Contacto inactivo",
             phone="555-0102",
             is_active=False,
+            emisor=self.emisor,
         )
-        inactive_contact.dogs.add(Dog.objects.create(name="No mostrar"))
+        inactive_contact.dogs.add(Dog.objects.create(name="No mostrar", emisor=self.emisor))
 
         response = self.client.get(reverse("contacts"))
 
@@ -112,9 +121,9 @@ class ContactsPageTests(TestCase):
         self.assertContains(response, 'class="contact-card"')
 
     def test_contacts_page_only_lists_active_dogs(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-        active_dog = Dog.objects.create(name="Nube")
-        inactive_dog = Dog.objects.create(name="Luna", is_active=False)
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
+        active_dog = Dog.objects.create(name="Nube", emisor=self.emisor)
+        inactive_dog = Dog.objects.create(name="Luna", is_active=False, emisor=self.emisor)
         contact.dogs.add(active_dog, inactive_dog)
 
         response = self.client.get(reverse("contacts"))
@@ -124,11 +133,11 @@ class ContactsPageTests(TestCase):
         self.assertContains(response, "perro activo")
 
     def test_contact_detail_shows_only_related_dogs_appointments_and_history(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-        other_contact = Contacts.objects.create(name="Luis Pérez", phone="555-0102")
-        active_dog = Dog.objects.create(name="Nube")
-        inactive_dog = Dog.objects.create(name="Luna", is_active=False)
-        unrelated_dog = Dog.objects.create(name="Toby")
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
+        other_contact = Contacts.objects.create(name="Luis Pérez", phone="555-0102", emisor=self.emisor)
+        active_dog = Dog.objects.create(name="Nube", emisor=self.emisor)
+        inactive_dog = Dog.objects.create(name="Luna", is_active=False, emisor=self.emisor)
+        unrelated_dog = Dog.objects.create(name="Toby", emisor=self.emisor)
         contact.dogs.add(active_dog, inactive_dog)
         other_contact.dogs.add(unrelated_dog)
 
@@ -146,19 +155,22 @@ class ContactsPageTests(TestCase):
             dog=active_dog,
             date="2026-11-01T10:00:00Z",
             service_type="BAÑO",
+            emisor=self.emisor,
         )
         ServiceHistory.objects.create(
             dog=inactive_dog,
             date="2026-10-01T10:00:00Z",
             service_type="CORTE",
+            emisor=self.emisor,
         )
         ServiceHistory.objects.create(
             dog=unrelated_dog,
             date="2026-10-02T10:00:00Z",
             service_type="COMPLETO",
+            emisor=self.emisor,
         )
 
-        response = self.client.get(reverse("contact_detail", args=[contact.pk]))
+        response = self.client.get(reverse("contact_detail", args=[contact.public_id]))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(list(response.context["dogs"]), [active_dog])
@@ -174,13 +186,13 @@ class ContactsPageTests(TestCase):
         self.assertContains(response, "Histórico")
 
     def test_contact_card_name_links_to_client_detail(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
 
         response = self.client.get(reverse("contacts"))
 
         self.assertContains(
             response,
-            f'href="{reverse("contact_detail", args=[contact.pk])}">Ana Ruiz</a>',
+            f'href="{reverse("contact_detail", args=[contact.public_id])}">Ana Ruiz</a>',
         )
 
     def test_discardable_contact_has_a_subtle_warning_badge(self):
@@ -188,8 +200,9 @@ class ContactsPageTests(TestCase):
             name="No prioritario",
             phone="555-0103",
             descartable=True,
+            emisor=self.emisor,
         )
-        Contacts.objects.create(name="Cliente habitual", phone="555-0104")
+        Contacts.objects.create(name="Cliente habitual", phone="555-0104", emisor=self.emisor)
 
         response = self.client.get(reverse("contacts"))
 
@@ -201,8 +214,8 @@ class ContactsPageTests(TestCase):
         self.assertEqual(response.content.count(b'class="discardable-badge"'), 1)
 
     def test_contacts_can_be_filtered_by_status(self):
-        Contacts.objects.create(name="Activa", phone="555-0101")
-        Contacts.objects.create(name="Inactiva", phone="555-0102", is_active=False)
+        Contacts.objects.create(name="Activa", phone="555-0101", emisor=self.emisor)
+        Contacts.objects.create(name="Inactiva", phone="555-0102", is_active=False, emisor=self.emisor)
 
         active_response = self.client.get(reverse("contacts"), {"status": "active"})
         inactive_response = self.client.get(reverse("contacts"), {"status": "inactive"})
@@ -218,8 +231,9 @@ class ContactsPageTests(TestCase):
             phone="555-0101",
             is_active=False,
             descartable=True,
+            emisor=self.emisor,
         )
-        dog = Dog.objects.create(name="Nube")
+        dog = Dog.objects.create(name="Nube", emisor=self.emisor)
         contact.dogs.add(dog)
 
         response = self.client.post(
@@ -242,7 +256,7 @@ class ContactsPageTests(TestCase):
         self.assertIn(dog, contact.dogs.all())
 
     def test_contact_can_be_activated_or_deactivated(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
 
         deactivate_response = self.client.post(
             reverse("contacts"),
@@ -261,8 +275,8 @@ class ContactsPageTests(TestCase):
         self.assertTrue(contact.is_active)
 
     def test_deactivating_contacts_deactivates_dogs_without_another_active_owner(self):
-        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101")
-        dog = Dog.objects.create(name="Nube")
+        contact = Contacts.objects.create(name="Ana Ruiz", phone="555-0101", emisor=self.emisor)
+        dog = Dog.objects.create(name="Nube", emisor=self.emisor)
         contact.dogs.add(dog)
 
         response = self.client.post(
