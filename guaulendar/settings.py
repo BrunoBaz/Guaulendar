@@ -44,15 +44,28 @@ DEBUG = env_bool("DJANGO_DEBUG", default=True)
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 
+VERCEL_URL = os.environ.get("VERCEL_URL")
+VERCEL_PROJECT_PRODUCTION_URL = os.environ.get(
+    "VERCEL_PROJECT_PRODUCTION_URL"
+)
+
+for vercel_host in (VERCEL_URL, VERCEL_PROJECT_PRODUCTION_URL):
+    if vercel_host:
+        ALLOWED_HOSTS.append(vercel_host)
+
 # Render publica el hostname público del servicio en esta variable.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 if DEBUG and not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ["192.168.0.14", "127.0.0.1", "localhost"]
+    ALLOWED_HOSTS = ["192.168.0.14", "127.0.0.1", "localhost", ".vercel.app",]
 
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+for vercel_host in (VERCEL_URL, VERCEL_PROJECT_PRODUCTION_URL):
+    if vercel_host:
+        CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_host}")
+
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
